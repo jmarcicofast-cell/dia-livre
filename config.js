@@ -2,12 +2,12 @@
 // Cole aqui o bloco firebaseConfig que o console do Firebase mostra ao criar o app web.
 // Estes valores não são senhas: identificam o projeto. Quem protege os dados são as regras do Firestore.
 export const firebaseConfig = {
-  apiKey: "COLE_AQUI",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyCuzgGhUTWDvpd4nbL1a51rM0CpvMOeyYw",
+  authDomain: "dia-livre.firebaseapp.com",
+  projectId: "dia-livre",
+  storageBucket: "dia-livre.firebasestorage.app",
+  messagingSenderId: "399867087665",
+  appId: "1:399867087665:web:ecceb35b7fc9698ecffe10"
 };
 
 // Chave de site do reCAPTCHA Enterprise usada pelo App Check (protege a IA contra uso indevido).
