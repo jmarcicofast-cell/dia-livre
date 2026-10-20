@@ -477,7 +477,7 @@ canvas#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-in
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
 import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-ai.js";
 import { firebaseConfig, RECAPTCHA_SITE_KEY, GEMINI_MODEL } from "./config.js";
 (function(){
@@ -560,7 +560,7 @@ async function connect(){
     sampleChecked=true; hideAI(); return;
   }
   const app = initializeApp(firebaseConfig);
-  if(RECAPTCHA_SITE_KEY){ try{ initializeAppCheck(app,{provider:new ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled:true}); }catch(e){} }
+  if(RECAPTCHA_SITE_KEY){ try{ initializeAppCheck(app,{provider:new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled:true}); }catch(e){} }
   auth = getAuth(app); auth.languageCode="pt"; fs = getFirestore(app);
   try{ const ai = getAI(app,{backend:new GoogleAIBackend()}); sample = geminiSample(getGenerativeModel(ai,{model:GEMINI_MODEL||"gemini-3.8-flash"})); }catch(e){ sample=null; }
   sampleChecked=true; if(!sample) hideAI();

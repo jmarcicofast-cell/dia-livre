@@ -10,7 +10,7 @@ export const firebaseConfig = {
   appId: "1:399867087665:web:ecceb35b7fc9698ecffe10"
 };
 
-// Chave de site do reCAPTCHA Enterprise usada pelo App Check (protege a IA contra uso indevido).
+// Chave de site do reCAPTCHA v3 usada pelo App Check (protege a IA contra uso indevido).
 // Veja o passo 5 do README. Deixe vazio enquanto não tiver.
 export const RECAPTCHA_SITE_KEY = "";
 

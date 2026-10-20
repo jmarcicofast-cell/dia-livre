@@ -17,7 +17,7 @@ O app não substitui acompanhamento com psicólogo ou CAPS.
 - Firebase Authentication (login com Google)
 - Cloud Firestore (cada pessoa tem o documento `users/{uid}`, só ela lê e grava)
 - Firebase AI Logic com Gemini Developer API para a IA de apoio
-- App Check com reCAPTCHA Enterprise para proteger a IA
+- App Check com reCAPTCHA v3 para proteger a IA
 
 Sem o Firebase configurado, o app funciona salvando só no aparelho e sem IA.
 
@@ -30,7 +30,8 @@ Sem o Firebase configurado, o app funciona salvando só no aparelho e sem IA.
 4. **Banco de dados**: Firestore Database → Criar banco de dados → modo de produção, local `southamerica-east1` (São Paulo).
    Na aba Regras, cole o conteúdo de `firestore.rules` e clique em Publicar.
 5. **IA**: AI Services → AI Logic → Começar → escolha **Gemini Developer API** (tem cota gratuita, não precisa do plano Blaze).
-   O AI Logic pede o App Check: em Segurança → App Check, registre o app web com **reCAPTCHA Enterprise**, informe o domínio `jmarcicofast-cell.github.io` e copie a chave do site para `RECAPTCHA_SITE_KEY` no `config.js`.
+   O AI Logic pede o App Check. Crie uma chave **reCAPTCHA v3** em google.com/recaptcha/admin com o domínio `jmarcicofast-cell.github.io`.
+   Em Segurança → App Check, registre o app web com o provedor reCAPTCHA (cole a **chave secreta**) e coloque a **chave do site** em `RECAPTCHA_SITE_KEY` no `config.js`.
 
 ## Publicar no GitHub Pages
 
