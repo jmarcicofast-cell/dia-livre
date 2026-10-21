@@ -911,10 +911,10 @@ Como agir:
 `;
 function aiErr(e){
   const c=e&&e.code;
-  if(c==="not_granted"||c==="sampling_disabled"||c==="not_declared"||c==="capability_disabled"){ sample=null; hideAI(); return "A IA não foi liberada neste aparelho."; }
+  if(c==="not_granted") return "A IA recusou o acesso (falta concluir o App Check no Firebase). Detalhe: "+String(e.message||"").slice(0,160);
   if(c==="rate_limited") return "Muitas mensagens em pouco tempo. Respire um pouco e tente de novo daqui a alguns minutos.";
   if(c==="cancelled") return "";
-  return "Não consegui responder agora. Tente de novo em instantes.";
+  return "Não consegui responder agora. Detalhe: "+String((e&&e.message)||e||"").slice(0,160);
 }
 async function incentivo(){
   if(!sample) return;
