@@ -12,7 +12,7 @@ export const firebaseConfig = {
 
 // Chave de site do reCAPTCHA v3 usada pelo App Check (protege a IA contra uso indevido).
 // Veja o passo 5 do README. Deixe vazio enquanto não tiver.
-export const RECAPTCHA_SITE_KEY = "";
+export const RECAPTCHA_SITE_KEY = "6Ld0GfktAAAAAAJBuqv8fAtumRJV6mq0clrmM1Lq";
 
 // Modelo Gemini usado pela IA de apoio (Firebase AI Logic, Gemini Developer API).
 export const GEMINI_MODEL = "gemini-3.8-flash";
