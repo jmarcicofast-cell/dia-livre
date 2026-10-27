@@ -1,6 +1,6 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
 import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-ai.js";
@@ -108,11 +108,24 @@ async function connect(){
   auth = getAuth(app); auth.languageCode="pt"; fs = getFirestore(app);
   try{ const ai = getAI(app,{backend:new GoogleAIBackend()}); sample = geminiSample(getGenerativeModel(ai,{model:GEMINI_MODEL||"gemini-3.8-flash"})); }catch(e){ sample=null; }
   sampleChecked=true; if(!sample) hideAI();
+  const erroLogin = e => {
+    const c=(e&&e.code)||"";
+    const msg = /popup-closed|cancelled-popup/.test(c) ? "A janela do Google foi fechada antes de terminar. Toque de novo e escolha a conta."
+      : /unauthorized-domain/.test(c) ? "Este endereço não está autorizado no Firebase."
+      : /network/.test(c) ? "Sem internet. Confira a conexão e tente de novo."
+      : /web-storage|storage/.test(c) ? "O navegador bloqueou o login. Abra o Dia Livre no Safari (não pelo atalho da tela inicial) e tente de novo."
+      : "Não foi possível entrar. Tente de novo.";
+    $("#login-err").textContent = msg + (c ? " ("+c.replace("auth/","")+")" : "");
+  };
+  getRedirectResult(auth).catch(erroLogin);
   $("#login-btn").onclick = async ()=>{
     $("#login-err").textContent="";
-    const p=new GoogleAuthProvider();
+    const p=new GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"});
     try{ await signInWithPopup(auth,p); }
-    catch(e){ if(/popup/i.test(e&&e.code||"")) { try{ await signInWithRedirect(auth,p); }catch(e2){ $("#login-err").textContent="Não foi possível entrar. Tente de novo."; } } else $("#login-err").textContent="Não foi possível entrar. Tente de novo."; }
+    catch(e){
+      if(/popup-blocked|operation-not-supported/.test(e&&e.code||"")) { try{ await signInWithRedirect(auth,p); }catch(e2){ erroLogin(e2); } }
+      else erroLogin(e);
+    }
   };
   $("#logout").onclick = async ()=>{ await saving; saveRef=null; try{ localStorage.removeItem("dialivre"); }catch(e){} S=DEF(); aplicarVisual(S.visual); renderAll(); await signOut(auth); };
   onAuthStateChanged(auth, async user=>{
