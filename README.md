@@ -50,7 +50,7 @@ O app só **lê** saldos e movimentações; não faz pagamentos. A chave da Plug
 4. **Variáveis do Worker**: Configurações → Variáveis e segredos → Adicionar:
    - `PLUGGY_CLIENT_ID` (Segredo)
    - `PLUGGY_CLIENT_SECRET` (Segredo)
-   - `ALLOWED_EMAIL` (Texto): o e-mail do Google que você usa no Dia Livre
+   - `ALLOWED_EMAIL` (Texto): o e-mail do Google que você usa no Dia Livre (para mais de um, separe com vírgula)
    - `FIREBASE_PROJECT_ID` (Texto): `dia-livre`
    - `ALLOWED_ORIGIN` (Texto): `https://jmarcicofast-cell.github.io`
 5. **No app**: Dinheiro → Banco → cole o endereço do Worker (`https://dia-livre-banco.<sua-conta>.workers.dev`)

@@ -4,7 +4,7 @@
 // Variáveis do Worker (Settings > Variables and Secrets):
 //   PLUGGY_CLIENT_ID      (Secret)  Client ID da aplicação no dashboard.pluggy.ai
 //   PLUGGY_CLIENT_SECRET  (Secret)  Client Secret da mesma aplicação
-//   ALLOWED_EMAIL         (Text)    seu e-mail do Google usado no Dia Livre
+//   ALLOWED_EMAIL         (Text)    e-mail(s) do Google usados no Dia Livre, separados por vírgula
 //   FIREBASE_PROJECT_ID   (Text)    dia-livre
 //   ALLOWED_ORIGIN        (Text)    https://jmarcicofast-cell.github.io
 //
@@ -153,6 +153,7 @@ async function verificarLogin(header, env) {
   const agora = Math.floor(Date.now() / 1000);
   if (pay.aud !== env.FIREBASE_PROJECT_ID || pay.iss !== "https://securetoken.google.com/" + env.FIREBASE_PROJECT_ID) return null;
   if (!(pay.exp > agora) || !(pay.iat <= agora + 60)) return null;
-  if (!pay.email_verified || String(pay.email).toLowerCase() !== String(env.ALLOWED_EMAIL).toLowerCase().trim()) return null;
+  const permitidos = String(env.ALLOWED_EMAIL).toLowerCase().split(/[,;\s]+/).filter(Boolean);
+  if (!pay.email_verified || !permitidos.includes(String(pay.email).toLowerCase())) return null;
   return pay.email;
 }
