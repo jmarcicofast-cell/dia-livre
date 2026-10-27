@@ -6,6 +6,7 @@ import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com
 import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-ai.js";
 import * as CFG from "../config.js";
 import { calcular, temConta } from "./calc.js";
+import { icone, COR_CAT } from "./icones.js";
 import { TEMAS, CORES_RAPIDAS, FONTES, TAMANHOS, CANTOS, MODOS, VISUAL_PADRAO, aplicarVisual, amostra, fonteUrlTodas } from "./tema.js";
 const { firebaseConfig, RECAPTCHA_SITE_KEY, GEMINI_MODEL } = CFG;
 const PLUGGY_WORKER_URL = CFG.PLUGGY_WORKER_URL || "";
@@ -49,6 +50,7 @@ let S = DEF();
 let saveRef = null, saving = Promise.resolve(), saveTimer = null, sample = null;
 
 /* ---------- Persistência ---------- */
+function setSync(ok){ const e=$("#sync"); e.textContent = ok ? "Sincronizado" : "Neste aparelho"; e.classList.toggle("off",!ok); }
 function loadLocal(){ try{ const r = localStorage.getItem("dialivre"); if(r) return JSON.parse(r); }catch(e){} return null; }
 function merge(o){
   const d = DEF(); const r = Object.assign(d, o||{});
@@ -68,7 +70,7 @@ function save(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
     const snap = JSON.parse(JSON.stringify(S));
-    saving = saving.then(()=>saveRef.set(snap)).then(()=>{ $("#sync").textContent="Salvo na sua conta"; }).catch(()=>{ $("#sync").textContent="Salvo neste aparelho"; });
+    saving = saving.then(()=>saveRef.set(snap)).then(()=>{ setSync(true); }).catch(()=>{ setSync(false); });
   }, 700);
 }
 /* Firebase: login Google, Firestore (users/{uid}) e IA Gemini pelo Firebase AI Logic */
@@ -123,10 +125,10 @@ async function connect(){
       if(!S.nome && user.displayName) S.nome = user.displayName.split(" ")[0];
       saveRef = { set: d => setDoc(ref, {estado:d, atualizado:Date.now()}) };
       save(); renderAll();
-      $("#sync").textContent="Salvo na sua conta";
+      setSync(true);
       $("#aj-store").textContent="Seus registros ficam salvos na sua conta Google ("+(user.email||"")+"), visíveis só para você.";
       if(S.fin.banco.items.length && Date.now()-(S.fin.banco.ult||0) > 6*3600e3) sincronizar(false);
-    }catch(e){ $("#sync").textContent="Sem conexão: salvando neste aparelho"; }
+    }catch(e){ setSync(false); }
   });
 }
 function hideAI(){
@@ -146,11 +148,11 @@ function renderHoje(){
   if(b > (S.recorde||0)){ S.recorde = b; save(); }
   $("#s-num").textContent = n;
   $("#s-lbl").textContent = n===1 ? "dia" : "dias";
-  $("#s-sub").textContent = n===0 ? "Seu dia 1 é hoje. Comece por ele." : "Você está vivendo o dia "+(n+1)+".";
+  $("#s-sub").textContent = n===0 ? "Seu primeiro dia é hoje." : "Hoje é o seu dia "+(n+1)+".";
   const next = MILES.find(m=>m>n) || n+30;
   const prev = [0,...MILES].filter(m=>m<=n).pop();
-  $("#s-bar").style.width = Math.min(100, ((n-prev)/(next-prev))*100)+"%";
-  $("#s-next").textContent = "Faltam "+(next-n)+" "+(next-n===1?"dia":"dias")+" para a conquista de "+next+" dias.";
+  $("#s-ring").style.strokeDashoffset = (326.7*(1-Math.min(1,(n-prev)/(next-prev)))).toFixed(1);
+  $("#s-next").textContent = "Faltam "+(next-n)+" "+(next-n===1?"dia":"dias")+" para a meta de "+next+".";
   $("#s-rec").textContent = b + (b===1?" dia":" dias");
   $("#s-tot").textContent = totalLivres();
 
@@ -158,17 +160,17 @@ function renderHoje(){
   const t = S.dias[todayKey()];
   const box = $("#checkin"); box.textContent=""; box.className = "card" + (t ? " done" : "");
   if(t && t.livre){
-    box.innerHTML = '<h2>Hoje eu não peguei</h2><p>Dia marcado. Cada dia assim fica registrado no seu calendário e soma no seu recorde.</p>';
+    box.innerHTML = '<h2>Hoje eu não peguei</h2><p class="small">Dia marcado no seu calendário.</p>';
     const u = document.createElement("button"); u.className="btn-link"; u.textContent="Desfazer marcação de hoje";
     u.onclick=()=>{ delete S.dias[todayKey()]; save(); renderAll(); }; box.append(u);
   } else if(t && !t.livre){
     box.className="card";
-    box.innerHTML = '<h2>Recomeço registrado</h2><p>Uma recaída não apaga o que você já aprendeu. Amanhã começa uma nova contagem, e o seu recorde continua seu.</p>';
-    const g = document.createElement("button"); g.className="btn-ghost"; g.textContent="Conversar sobre o que aconteceu"; g.dataset.go="conversa"; box.append(g);
+    box.innerHTML = '<h2>Recomeço registrado</h2><p class="small">Uma recaída não apaga o que você já aprendeu. Amanhã começa uma nova contagem, e o seu recorde continua seu.</p>';
+    const g = document.createElement("button"); g.className="btn-soft"; g.textContent="Conversar sobre o que aconteceu"; g.dataset.go="conversa"; box.append(g);
   } else {
     box.innerHTML = '<h2>Check-in de hoje</h2>'+
-      '<label class="field">Como esteve a vontade hoje: <span id="ci-v">3</span><input type="range" id="ci" min="0" max="10" value="3"></label>'+
-      '<div class="scale"><span>nenhuma</span><span>muito forte</span></div>'+
+      '<label class="field">Vontade hoje <output id="ci-v">3</output><input type="range" id="ci" min="0" max="10" value="3"></label>'+
+      '<div class="scale"><span>Nenhuma</span><span>Muito forte</span></div>'+
       '<div class="stack"><button class="btn-primary btn-block" id="ci-ok">Hoje eu não peguei</button>'+
       '<button class="btn-link" id="ci-fall">Hoje eu peguei</button></div><div id="ci-fall-box" hidden class="stack"></div>';
     $("#ci").oninput = e => $("#ci-v").textContent = e.target.value;
@@ -179,7 +181,7 @@ function renderHoje(){
     };
     $("#ci-fall").onclick = () => {
       const fb = $("#ci-fall-box"); fb.hidden=false;
-      fb.innerHTML = '<p>Tudo bem contar a verdade aqui. Isso também é cuidado.</p><label class="field">O que aconteceu antes? (opcional)<textarea id="ci-fall-nota"></textarea></label><button class="btn-ghost" id="ci-fall-ok">Registrar e recomeçar amanhã</button>';
+      fb.innerHTML = '<p>Tudo bem contar a verdade aqui. Isso também é cuidado.</p><label class="field">O que aconteceu antes? <span class="opt">opcional</span><textarea id="ci-fall-nota"></textarea></label><button class="btn-soft" id="ci-fall-ok">Registrar e recomeçar amanhã</button>';
       $("#ci-fall-ok").onclick = () => {
         const nota = $("#ci-fall-nota").value.trim();
         S.recorde = best();
@@ -211,19 +213,19 @@ function renderHoje(){
   // Conquistas
   const bg = $("#badges"); bg.textContent="";
   const extra = [
-    ["✓","Primeiro check-in", Object.keys(S.dias).length>0],
-    ["SOS","Venci uma vontade", resisted().length>=1],
-    ["5×","5 vontades vencidas", resisted().length>=5],
-    ["♥","Motivos escritos", S.motivos.length>=3],
-    ["✉","Carta escrita", (S.carta||"").trim().length>20],
-    ["▣","Todas as barreiras", BARR.every(([id])=>S.barreiras[id])]
+    ["@check","Primeiro check-in", Object.keys(S.dias).length>0],
+    ["@sos","Venci uma vontade", resisted().length>=1],
+    ["@estrela","5 vontades vencidas", resisted().length>=5],
+    ["@apoio","Motivos escritos", S.motivos.length>=3],
+    ["@carta","Carta escrita", (S.carta||"").trim().length>20],
+    ["@escudo","Todas as barreiras", BARR.every(([id])=>S.barreiras[id])]
   ];
   MILES.forEach(m=> addBadge(bg, String(m), m===1?"1 dia":m+" dias", b>=m));
   extra.forEach(([ic,t,on])=> addBadge(bg, ic, t, on));
 }
 function addBadge(p, ic, t, on){
   const d=document.createElement("div"); d.className="badge"+(on?" on":"");
-  const i=document.createElement("div"); i.className="ic"; i.textContent=ic;
+  const i=document.createElement("div"); i.className="ic"; if(ic[0]==="@") i.innerHTML=icone(ic.slice(1)); else i.textContent=ic;
   const s=document.createElement("span"); s.textContent=t;
   d.append(i,s); d.title = on ? "Conquistada" : "Ainda não"; p.append(d);
 }
@@ -284,27 +286,27 @@ function saveUrge(res){
 /* ================= FINANÇAS ================= */
 const OBJ_SUG = ["Reserva de emergência","Quitar uma dívida","Presente para quem eu amo","Viagem","Curso","Algo para a casa"];
 const CATS = [
-  {id:"mercado",n:"Mercado",ic:"🛒",t:"s"},
-  {id:"casa",n:"Casa e aluguel",ic:"🏠",t:"s"},
-  {id:"contas",n:"Luz, água e internet",ic:"💡",t:"s"},
-  {id:"transporte",n:"Transporte",ic:"🚌",t:"s"},
-  {id:"comer",n:"Comer fora e delivery",ic:"🍔",t:"s"},
-  {id:"saude",n:"Saúde e farmácia",ic:"💊",t:"s"},
-  {id:"educacao",n:"Educação",ic:"📚",t:"s"},
-  {id:"lazer",n:"Lazer",ic:"🎉",t:"s"},
-  {id:"compras",n:"Compras",ic:"🛍️",t:"s"},
-  {id:"beleza",n:"Beleza e cuidados",ic:"💅",t:"s"},
-  {id:"assin",n:"Assinaturas",ic:"📺",t:"s"},
-  {id:"familia",n:"Família e filhos",ic:"👨‍👩‍👧",t:"s"},
-  {id:"dividas",n:"Dívidas e empréstimos",ic:"🤝",t:"s"},
-  {id:"taxas",n:"Juros e tarifas",ic:"🏦",t:"s"},
-  {id:"outros",n:"Outros gastos",ic:"📦",t:"s"},
-  {id:"salario",n:"Salário",ic:"💼",t:"e"},
-  {id:"extra",n:"Renda extra",ic:"✨",t:"e"},
-  {id:"outrasE",n:"Outras entradas",ic:"➕",t:"e"},
-  {id:"fatura",n:"Pagamento de fatura",ic:"💳",t:"f"},
-  {id:"entre",n:"Entre minhas contas",ic:"🔁",t:"f"},
-  {id:"guardado",n:"Guardado ou investido",ic:"🐷",t:"f"}
+  {id:"mercado",n:"Mercado",ic:"mercado",t:"s"},
+  {id:"casa",n:"Casa e aluguel",ic:"casa",t:"s"},
+  {id:"contas",n:"Luz, água e internet",ic:"contas",t:"s"},
+  {id:"transporte",n:"Transporte",ic:"transporte",t:"s"},
+  {id:"comer",n:"Comer fora e delivery",ic:"comer",t:"s"},
+  {id:"saude",n:"Saúde e farmácia",ic:"saude",t:"s"},
+  {id:"educacao",n:"Educação",ic:"educacao",t:"s"},
+  {id:"lazer",n:"Lazer",ic:"lazer",t:"s"},
+  {id:"compras",n:"Compras",ic:"compras",t:"s"},
+  {id:"beleza",n:"Beleza e cuidados",ic:"beleza",t:"s"},
+  {id:"assin",n:"Assinaturas",ic:"assin",t:"s"},
+  {id:"familia",n:"Família e filhos",ic:"familia",t:"s"},
+  {id:"dividas",n:"Dívidas e empréstimos",ic:"dividas",t:"s"},
+  {id:"taxas",n:"Juros e tarifas",ic:"taxas",t:"s"},
+  {id:"outros",n:"Outros gastos",ic:"outros",t:"s"},
+  {id:"salario",n:"Salário",ic:"salario",t:"e"},
+  {id:"extra",n:"Renda extra",ic:"extra",t:"e"},
+  {id:"outrasE",n:"Outras entradas",ic:"outrasE",t:"e"},
+  {id:"fatura",n:"Pagamento de fatura",ic:"fatura",t:"f"},
+  {id:"entre",n:"Entre minhas contas",ic:"entre",t:"f"},
+  {id:"guardado",n:"Guardado ou investido",ic:"guardado",t:"f"}
 ];
 const NOMES_MES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 const addMes = (mk,n) => { let [y,m]=mk.split("-").map(Number); m+=n; y+=Math.floor((m-1)/12); m=((m-1)%12+12)%12+1; return y+"-"+pad(m); };
@@ -318,6 +320,13 @@ let sub = "resumo";
 
 function todasCats(){ return [...CATS, ...(S.fin.cats||[]).map(c=>({...c, t:"s", custom:true}))]; }
 function cat(id){ return todasCats().find(c=>c.id===id) || CATS.find(c=>c.id==="outros"); }
+function catIc(c){
+  const e=el("span","cat-ic");
+  const cor = COR_CAT[c.id] || ("hsl("+([...String(c.id)].reduce((a,x)=>a+x.charCodeAt(0),0)*47%360)+" 45% 48%)");
+  e.style.setProperty("--c", cor);
+  if(c.custom && c.ic && !/^[a-zA-Z]+$/.test(c.ic)){ e.classList.add("emo"); e.textContent=c.ic; } else e.innerHTML=icone(c.custom?"tag":c.ic);
+  return e;
+}
 function cartao(id){ return S.fin.cartoes.find(c=>c.id===id); }
 
 /* Em qual fatura cai uma compra: devolve o mês do vencimento ("2026-11") */
@@ -441,7 +450,7 @@ function alertas(){
 }
 function renderResumo(){
   const al=$("#r-alertas"); al.textContent="";
-  if(curMes===monthKey()) alertas().forEach(([cls,ic,txt])=>{ const a=el("div","alert "+cls); a.append(el("b","ic",ic), el("span",null,txt)); al.append(a); });
+  if(curMes===monthKey()) alertas().forEach(([cls,ic,txt])=>{ const a=el("div","alert "+cls); a.innerHTML=icone(cls==="over"?"alerta":"relogio"); a.append(el("span",null,txt)); al.append(a); });
   const t=totaisMes(curMes);
   $("#r-ent").textContent=brl(t.ent); $("#r-sai").textContent=brl(t.sai);
   const sal=t.ent-t.sai; $("#r-sal").textContent=(sal<0?"− ":"")+brl(Math.abs(sal));
@@ -455,13 +464,13 @@ function renderResumo(){
   const mostrar = arr.length>8 ? [...arr.slice(0,7), ["__outras", arr.slice(7).reduce((a,x)=>a+x[1],0)]] : arr;
   const maxV = Math.max(...mostrar.map(([k,v])=>Math.max(v, S.fin.orc[k]||0)), 1);
   mostrar.forEach(([k,v])=>{
-    const c = k==="__outras" ? {n:"Outras categorias", ic:"…"} : cat(k);
+    const c = k==="__outras" ? {id:"outros", n:"Outras categorias", ic:"outros"} : cat(k);
     const lim = S.fin.orc[k]||0;
     const b=el("button","cb"+(lim && v>lim ? " over" : lim && v>=lim*.85 ? " warn" : ""));
-    const top=el("div","between"); top.append(el("b",null,c.ic+" "+c.n), el("span",null,brl(v)+(lim?" de "+brl(lim):"")+" · "+Math.round(v/(t.sai||1)*100)+"%"));
+    const top=el("div","between"); const vs=el("span"); vs.append(el("strong",null,brl(v)), (lim?" de "+brl(lim):" · "+Math.round(v/(t.sai||1)*100)+"%")); top.append(el("b",null,c.n), vs);
     const tr=el("div","t"); const i=el("i"); i.style.width=(v/maxV*100)+"%"; tr.append(i);
     if(lim){ const u=el("u"); u.style.left="calc("+(lim/maxV*100)+"% - 1px)"; u.title="Limite"; tr.append(u); }
-    b.append(top,tr);
+    const ci=catIc(c); b.style.setProperty("--c", ci.style.getPropertyValue("--c")); b.append(ci,top,tr);
     if(k!=="__outras") b.onclick=()=>{ filtroCat=k; goSub("lanc"); };
     cb.append(b);
   });
@@ -533,7 +542,7 @@ function renderLanc(){
   const f=$("#l-filtro");
   if(!f.options.length || f.dataset.n!=String(todasCats().length)){
     f.textContent=""; f.append(new Option("Todas as categorias",""));
-    todasCats().forEach(c=>f.append(new Option(c.ic+" "+c.n, c.id))); f.dataset.n=todasCats().length;
+    todasCats().forEach(c=>f.append(new Option(c.n, c.id))); f.dataset.n=todasCats().length;
   }
   f.value=filtroCat;
   const q=normDesc(busca);
@@ -546,14 +555,14 @@ function renderLanc(){
   let grupo=null, dia="";
   lista.forEach(o=>{
     if(o.l.d!==dia){ dia=o.l.d; grupo=el("div","dia-grupo");
-      const dt=parseKey(dia); const h=el("p","eyebrow"); h.append(el("span",null, dt.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"short"})));
+      const dt=parseKey(dia); const h=el("p","dia",dt.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"}));
       grupo.append(h); box.append(grupo); }
     const c=cat(o.l.cat);
     const b=el("button","lanc"+(c.t==="f"?" fora":""));
     const nm=el("span","nm"); nm.append(el("b",null,o.l.desc||c.n));
-    const det=[c.n, rotuloConta(o.l), o.n>1?"parcela "+o.i+"/"+o.n:"", o.proj?"prevista":"", o.l.src==="b"?"banco":""].filter(Boolean).join(" · ");
+    const det=[c.n, rotuloConta(o.l), o.n>1?"parcela "+o.i+"/"+o.n:"", o.proj?"prevista":"", o.l.src==="b"&&rotuloConta(o.l)!=="Banco"?"banco":""].filter(Boolean).join(" · ");
     nm.append(el("small",null,det));
-    b.append(el("span","ic",c.ic), nm, el("span","vl"+(o.l.t==="e"?" e":""), (o.l.t==="e"?"+ ":"− ")+brl(o.v)));
+    b.append(catIc(c), nm, el("span","vl"+(o.l.t==="e"?" e":""), (o.l.t==="e"?"+ ":"− ")+brl(o.v)));
     b.onclick=()=>abrirLanc(o.l);
     grupo.append(b);
   });
@@ -566,7 +575,7 @@ function fecharSheets(){ $$(".sheet").forEach(s=>s.hidden=true); document.body.s
 function catsDoTipo(t){ return todasCats().filter(c=> t==="e" ? c.t==="e"||c.t==="f" : c.t==="s"||c.t==="f"); }
 function pintarCats(){
   const box=$("#sl-cats"); box.textContent="";
-  catsDoTipo(tipoSel).forEach(c=>{ const b=el("button","chip",c.ic+" "+c.n); b.type="button"; b.setAttribute("aria-pressed", c.id===catSel);
+  catsDoTipo(tipoSel).forEach(c=>{ const b=el("button","chip"); b.innerHTML=(c.custom&&c.ic&&!/^[a-z]+$/i.test(c.ic)?"":icone(c.custom?"tag":c.ic)); b.append(c.n); b.type="button"; b.setAttribute("aria-pressed", c.id===catSel);
     b.onclick=()=>{ catSel=c.id; pintarCats(); }; box.append(b); });
 }
 function infoLanc(){
@@ -650,7 +659,7 @@ function renderOrc(){
   const linha=c=>{
     const g=t.porCat[c.id]||0, lim=S.fin.orc[c.id]||0;
     const it=mkItem(lim&&g>lim?"hot":"");
-    const top=el("div","top"); top.append(el("b",null,c.ic+" "+c.n), el("span",null, lim ? brl(g)+" de "+brl(lim) : brl(g)));
+    const top=el("div","top"); top.append(el("b",null,c.n), el("span",null, lim ? brl(g)+" de "+brl(lim) : brl(g)));
     it.append(top);
     if(lim){ it.append(barra(g/lim*100, g>lim?"over":g>=lim*.85?"warn":""));
       it.append(el("p","sub", g>lim ? "Passou "+brl(g-lim)+" do limite." : "Ainda pode gastar "+brl(lim-g)+".")); }
@@ -776,7 +785,7 @@ function renderAgenda(){
   const pagas=itens.filter(x=>x.pg).length;
   $("#f-mes").textContent = itens.length ? pagas+" de "+itens.length+" pagas em "+nomeMes(mk,false)+". Falta pagar "+brl(itens.filter(x=>!x.pg).reduce((a,x)=>a+x.v,0))+"." : "Cadastre aluguel, luz, água, internet... Depois é só marcar quando pagar. Faturas de cartão aparecem aqui sozinhas.";
   const fc=$("#f-contas"); fc.textContent=""; itens.forEach(it=>fc.append(linhaItem(it,mk)));
-  const sc=$("#fc-cat"); if(sc.dataset.n!=String(todasCats().length)){ sc.textContent=""; catsDoTipo("s").filter(c=>c.t==="s").forEach(c=>sc.append(new Option(c.ic+" "+c.n,c.id))); sc.value="contas"; sc.dataset.n=todasCats().length; }
+  const sc=$("#fc-cat"); if(sc.dataset.n!=String(todasCats().length)){ sc.textContent=""; catsDoTipo("s").filter(c=>c.t==="s").forEach(c=>sc.append(new Option(c.n,c.id))); sc.value="contas"; sc.dataset.n=todasCats().length; }
   $("#fc-auto").checked=!!S.fin.auto;
 }
 
@@ -961,7 +970,7 @@ function renderBanco(){
   $("#b-desligar").hidden=!b.items.length;
   const box=$("#b-contas"); box.textContent="";
   b.contas.forEach(a=>{ const it=mkItem();
-    it.append(topLine((a.tipo==="CREDIT"?"💳 ":"🏦 ")+(a.nome||"Conta"), a.tipo==="CREDIT" ? (a.disp!=null?"disponível "+brl(a.disp):"") : brl(a.saldo||0)));
+    it.append(topLine((a.nome||(a.tipo==="CREDIT"?"Cartão":"Conta")), a.tipo==="CREDIT" ? (a.disp!=null?"disponível "+brl(a.disp):"") : brl(a.saldo||0)));
     if(a.tipo==="CREDIT" && a.limite) it.append(el("p","sub","Limite "+brl(a.limite)+(a.vence?" · vence dia "+diaDe(a.vence):"")));
     box.append(it); });
   if(!b.items.length && !urlServidor()) box.append(el("p","small muted","Para conectar, primeiro crie o servidor da conexão (passo a passo no README) e cole o endereço dele aqui embaixo."));
@@ -1049,7 +1058,7 @@ function renderApoio(){
     c.onchange=()=>{ S.barreiras[id]=c.checked; save(); renderHoje(); if(c.checked) toast("Barreira levantada."); };
     const s=document.createElement("span"); s.textContent=t; l.append(c,s); bx.append(l); });
   const has = S.contato.nome||S.contato.tel;
-  $("#ct-show").hidden=!has; $("#ct-name").textContent=S.contato.nome||"Contato"; $("#ct-tel").textContent=S.contato.tel||"";
+  $("#ct-show").hidden=!has; $("#ct-name").textContent=S.contato.nome||"Contato"; $("#ct-tel").textContent=S.contato.tel||""; $("#ct-show").href = S.contato.tel ? "tel:"+S.contato.tel.replace(/[^0-9+]/g,"") : "";
   if(document.activeElement!==$("#ct-in-name")) $("#ct-in-name").value=S.contato.nome||"";
   if(document.activeElement!==$("#ct-in-tel")) $("#ct-in-tel").value=S.contato.tel||"";
   if(document.activeElement!==$("#aj-nome")) $("#aj-nome").value = S.nome||"";
@@ -1064,8 +1073,8 @@ function renderSOS(){
   $("#reason").textContent = ms[rIdx % ms.length];
   const has=(S.carta||"").trim(); $("#sos-letter").hidden=!has; $("#sos-letter-txt").textContent=S.carta||"";
   const ct=$("#sos-contact"); ct.textContent="";
-  if(S.contato.tel){ const p=document.createElement("p"); p.innerHTML='Ligue para <b></b>: <span class="num" style="user-select:all;font-weight:700"></span>';
-    p.querySelector("b").textContent=S.contato.nome||"sua pessoa de confiança"; p.querySelector(".num").textContent=S.contato.tel; ct.append(p); }
+  if(S.contato.tel){ const p=document.createElement("p"); p.className="contact"; p.innerHTML='<span class="c-ic">'+icone("telefone")+'</span><span class="c-t"><b></b><small>Pessoa de confiança</small></span><a class="num"></a>';
+    p.querySelector("b").textContent=S.contato.nome||"Pessoa de confiança"; const nn=p.querySelector(".num"); nn.textContent=S.contato.tel; nn.href="tel:"+S.contato.tel.replace(/[^0-9+]/g,""); ct.append(p); }
   else { const p=document.createElement("p"); p.className="small muted"; p.textContent="Cadastre uma pessoa de confiança na aba Apoio. Se precisar de apoio emocional agora, o CVV atende 24 horas no 188."; ct.append(p); }
 }
 function clock(){ $("#t-clock").textContent = pad(Math.floor(tLeft/60))+":"+pad(tLeft%60); }
@@ -1178,7 +1187,9 @@ function celebrate0(){
 }
 
 /* ---------- Navegação ---------- */
+const TITULOS={hoje:"Hoje",gatilhos:"Gatilhos",sos:"SOS",dinheiro:"Dinheiro",conversa:"Conversa",apoio:"Apoio"};
 function go(tab){
+  $("#titulo").textContent=TITULOS[tab]||"Dia Livre";
   $$("[data-view]").forEach(v=>v.hidden = v.id!=="v-"+tab);
   $$("nav.tabs button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===tab?"page":"false"));
   if(tab==="sos") renderSOS();
@@ -1261,7 +1272,7 @@ $("#obj-add").onclick=()=>{ const nome=$("#obj-nome").value.trim(), meta=num($("
   S.objetivos.push({id:uid(),nome,meta,guardado:0}); $("#obj-nome").value=$("#obj-meta").value=""; save(); renderDinheiro(); toast("Objetivo criado."); };
 $("#fin-btn").onclick=planoFin;
 $("#o-cat-add").onclick=()=>{ const n=$("#o-cat-nome").value.trim(); if(!n){ toast("Dê um nome à categoria."); return; }
-  S.fin.cats.push({id:"c"+uid(), n, ic:$("#o-cat-ic").value.trim()||"🏷️"}); $("#o-cat-nome").value=$("#o-cat-ic").value=""; save(); renderOrc(); toast("Categoria criada."); };
+  S.fin.cats.push({id:"c"+uid(), n, ic:"tag"}); $("#o-cat-nome").value=""; save(); renderOrc(); toast("Categoria criada."); };
 $("#c-add").onclick=()=>{ const nome=$("#c-nome").value.trim(); if(!nome){ toast("Dê um nome ao cartão."); return; }
   const fecha=Math.min(31,Math.max(1,parseInt($("#c-fecha").value)||1)), vence=Math.min(31,Math.max(1,parseInt($("#c-vence").value)||10));
   S.fin.cartoes.push({id:uid(), nome, fecha, vence, limite:num($("#c-lim").value), src:"m"}); ["#c-nome","#c-fecha","#c-vence","#c-lim"].forEach(s=>$(s).value=""); save(); renderCartoes(); toast("Cartão adicionado."); };
@@ -1278,6 +1289,7 @@ let rsz=null; addEventListener("resize",()=>{ clearTimeout(rsz); rsz=setTimeout(
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>aplicarVisual(S.visual));
 
 /* ---------- Início ---------- */
+$$("i[data-ic]").forEach(e=>{ e.outerHTML=icone(e.dataset.ic); });
 S = merge(loadLocal());
 aplicarVisual(S.visual);
 chips("#g-sent",SENT,sel.sent); chips("#g-sit",SIT,sel.sit);

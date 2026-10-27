@@ -11,41 +11,43 @@
 <style>:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" id="fonte-css" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
-<link rel="stylesheet" href="css/app.css?v=2">
+<link rel="stylesheet" id="fonte-css" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="css/app.css?v=3">
 
 </head>
 <body>
 <canvas id="fx" aria-hidden="true"></canvas>
 <div id="login" class="login" hidden>
   <div class="login-box">
-    <h1>Dia <span>Livre</span></h1>
-    <p>Um dia de cada vez, longe do agiota. Seus registros ficam salvos na sua conta e só você vê.</p>
+    <img src="icon.svg" alt="" width="72" height="72" class="login-ic">
+    <h1>Dia Livre</h1>
+    <p class="muted">Seus registros ficam na sua conta. Só você vê.</p>
     <button class="btn-primary btn-block" id="login-btn">Entrar com Google</button>
     <p class="note" id="login-err"></p>
   </div>
 </div>
 <div class="wrap">
   <header class="top">
-    <h1>Dia <span>Livre</span></h1>
+    <h1 id="titulo">Hoje</h1>
     <div class="hr">
-      <span class="sync" id="sync">Salvo neste aparelho</span>
-      <button class="icon-btn" id="btn-visual" aria-label="Aparência: cores e fontes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4c0-4.6-4-8.2-9-8.2z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10.5" cy="7.2" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/></svg></button>
+      <span class="sync" id="sync" role="status"></span>
+      <button class="icon-btn" id="btn-visual" aria-label="Aparência"><i data-ic="paleta"></i></button>
     </div>
   </header>
 
   <!-- HOJE -->
   <section id="v-hoje" class="stack" data-view>
-    <div class="card streak">
-      <p class="eyebrow" style="color:inherit;opacity:.8">Sem pegar com agiota</p>
-      <div class="row" style="align-items:flex-end;gap:12px">
-        <span class="num" id="s-num">0</span>
-        <span class="lbl" id="s-lbl">dias</span>
+    <div class="card hero">
+      <div class="ring" aria-hidden="true">
+        <svg viewBox="0 0 120 120"><circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fg" id="s-ring" cx="60" cy="60" r="52"/></svg>
+        <div class="ring-c"><span class="num" id="s-num">0</span><span class="lbl" id="s-lbl">dias</span></div>
       </div>
-      <p id="s-sub" style="font-weight:700"></p>
-      <div class="progress" aria-hidden="true"><i id="s-bar" style="width:0%"></i></div>
-      <p class="next" id="s-next"></p>
-      <div class="meta"><span>Recorde: <b id="s-rec">0</b></span><span>Dias livres marcados: <b id="s-tot">0</b></span></div>
+      <div class="hero-t">
+        <p class="hero-h">Sem pegar com agiota</p>
+        <p id="s-sub" class="muted small"></p>
+        <p id="s-next" class="small"></p>
+        <dl class="kv"><div><dt>Recorde</dt><dd id="s-rec">0</dd></div><div><dt>Dias marcados</dt><dd id="s-tot">0</dd></div></dl>
+      </div>
     </div>
 
     <div class="card" id="checkin"></div>
@@ -53,7 +55,7 @@
     <div class="card">
       <h2>Últimas 5 semanas</h2>
       <div class="cal" id="cal"></div>
-      <div class="legend"><span><i style="background:var(--good)"></i>Dia livre</span><span><i style="background:var(--alert-soft)"></i>Recaída</span><span><i style="background:var(--sunk)"></i>Sem registro</span></div>
+      <div class="legend"><span><i class="lg-ok"></i>Dia livre</span><span><i class="lg-fall"></i>Recaída</span></div>
     </div>
 
     <div class="card">
@@ -62,55 +64,52 @@
     </div>
 
     <div class="card">
-      <h2>Um incentivo para hoje</h2>
-      <p class="muted small">A IA escreve uma mensagem curta a partir dos seus motivos e do seu momento.</p>
+      <h2>Incentivo do dia</h2>
       <div class="ai-out" id="inc-out" hidden></div>
-      <button class="btn-ghost" id="inc-btn">Receber incentivo</button>
+      <button class="btn-soft" id="inc-btn"><i data-ic="ia"></i>Receber incentivo</button>
     </div>
   </section>
 
   <!-- SOS -->
   <section id="v-sos" class="stack" data-view hidden>
-    <div class="card sos-top">
+    <div class="sos-top">
       <h2>A vontade é uma onda. Ela sobe e depois desce.</h2>
-      <p>Você não precisa decidir nada agora. Só espere estes 15 minutos comigo.</p>
+      <p>Você não precisa decidir nada agora. Espere estes 15 minutos.</p>
     </div>
-    <div class="card">
+    <div class="card center">
       <div class="timer" id="t-clock">15:00</div>
       <div class="breath"><div class="circle" id="circle"><span id="breath-lbl">Pronta?</span></div></div>
       <div class="row" style="justify-content:center">
         <button class="btn-primary" id="t-start">Começar os 15 minutos</button>
-        <button class="btn-ghost" id="t-stop" hidden>Pausar</button>
+        <button class="btn-soft" id="t-stop" hidden>Pausar</button>
       </div>
-      <p class="note" style="text-align:center">Inspire em 4, segure em 4, solte em 6.</p>
+      <p class="note">Inspire em 4, segure em 4, solte em 6.</p>
     </div>
     <div class="card">
-      <p class="eyebrow">Lembre por que você está fazendo isso</p>
+      <h2>Por que você está fazendo isso</h2>
       <p class="reason" id="reason"></p>
-      <button class="btn-ghost" id="reason-next">Próximo motivo</button>
+      <button class="btn-soft" id="reason-next">Próximo motivo</button>
     </div>
     <div class="card" id="sos-letter" hidden>
-      <p class="eyebrow">Carta de você para você</p>
-      <p id="sos-letter-txt" style="white-space:pre-wrap"></p>
+      <h2>Sua carta</h2>
+      <p id="sos-letter-txt" class="carta-txt"></p>
     </div>
     <div class="card">
-      <h3>Fale com alguém agora</h3>
-      <div class="row">
-        <button class="btn-sun" data-go="conversa">Conversar com a IA</button>
-      </div>
+      <h2>Fale com alguém agora</h2>
       <div id="sos-contact"></div>
+      <button class="btn-soft" data-go="conversa"><i data-ic="conversa"></i>Conversar com a IA</button>
     </div>
     <div class="card" id="sos-end">
-      <h3>Como você está agora?</h3>
-      <label class="field">Força da vontade agora: <span id="sos-int-v">5</span>
+      <h2>Como você está agora?</h2>
+      <label class="field">Força da vontade <output id="sos-int-v">5</output>
         <input type="range" id="sos-int" min="0" max="10" value="5">
       </label>
-      <label class="field">Valor que você pensou em pegar (opcional)
-        <input id="sos-val" class="valor" inputmode="decimal" placeholder="Ex.: 500">
+      <label class="field">Valor que pensou em pegar <span class="opt">opcional</span>
+        <input id="sos-val" class="valor" inputmode="decimal" placeholder="R$ 0">
       </label>
       <div class="stack">
         <button class="btn-primary btn-block" id="sos-win">Venci a vontade</button>
-        <button class="btn-ghost btn-block" data-go="conversa">Ainda estou com vontade</button>
+        <button class="btn-soft btn-block" data-go="conversa">Ainda estou com vontade</button>
       </div>
     </div>
   </section>
@@ -119,23 +118,22 @@
   <section id="v-gatilhos" class="stack" data-view hidden>
     <div class="card">
       <h2>Registrar uma vontade</h2>
-      <p class="muted small">Anotar o que veio antes do impulso é o que mostra o seu padrão.</p>
-      <label class="field">Intensidade: <span id="g-int-v">6</span>
+      <label class="field">Intensidade <output id="g-int-v">6</output>
         <input type="range" id="g-int" min="0" max="10" value="6">
       </label>
-      <div class="scale"><span>leve</span><span>muito forte</span></div>
-      <div class="stack"><span class="small" style="font-weight:700">O que eu estava sentindo</span><div class="chips" id="g-sent"></div></div>
-      <div class="stack"><span class="small" style="font-weight:700">Situação</span><div class="chips" id="g-sit"></div></div>
-      <label class="field">Valor que pensei em pegar (opcional)<input id="g-val" class="valor" inputmode="decimal" placeholder="Ex.: 300"></label>
-      <label class="field">Anotação (opcional)<textarea id="g-nota" placeholder="O que aconteceu antes?"></textarea></label>
-      <div class="row">
-        <button class="btn-primary" id="g-save-win">Salvar: resisti</button>
-        <button class="btn-ghost" id="g-save-fall">Salvar: acabei pegando</button>
+      <div class="scale"><span>Leve</span><span>Muito forte</span></div>
+      <div class="stack"><span class="lbl-f">O que eu estava sentindo</span><div class="chips" id="g-sent"></div></div>
+      <div class="stack"><span class="lbl-f">Situação</span><div class="chips" id="g-sit"></div></div>
+      <label class="field">Valor que pensei em pegar <span class="opt">opcional</span><input id="g-val" class="valor" inputmode="decimal" placeholder="R$ 0"></label>
+      <label class="field">Anotação <span class="opt">opcional</span><textarea id="g-nota" placeholder="O que aconteceu antes?"></textarea></label>
+      <div class="row2">
+        <button class="btn-primary" id="g-save-win">Resisti</button>
+        <button class="btn-soft" id="g-save-fall">Acabei pegando</button>
       </div>
     </div>
     <div class="card">
       <h2>Seus gatilhos</h2>
-      <div id="g-empty" class="muted small">Quando você registrar as primeiras vontades, os sentimentos e situações mais frequentes aparecem aqui.</div>
+      <p id="g-empty" class="muted small">Os sentimentos, situações e horários mais frequentes aparecem aqui depois dos primeiros registros.</p>
       <div id="g-stats" class="stack" hidden>
         <p class="small" id="g-sum"></p>
         <h3>Sentimentos</h3><div class="bars" id="g-b-sent"></div>
@@ -143,7 +141,7 @@
         <h3>Horário</h3><div class="bars" id="g-b-hr"></div>
       </div>
       <div class="ai-out" id="pat-out" hidden></div>
-      <button class="btn-ghost" id="pat-btn" hidden>Pedir à IA para ler meu padrão</button>
+      <button class="btn-soft" id="pat-btn" hidden><i data-ic="ia"></i>Pedir à IA para ler meu padrão</button>
     </div>
     <div class="card">
       <h2>Histórico</h2>
@@ -153,10 +151,7 @@
 
   <!-- CONVERSA -->
   <section id="v-conversa" class="stack" data-view hidden>
-    <div class="card">
-      <h2>Conversa de apoio</h2>
-      <p class="muted small">Uma IA para te acompanhar na hora da vontade. Ela não substitui o psicólogo e não guarda nada fora deste app.</p>
-    </div>
+    <p class="note">Apoio na hora da vontade. Não substitui psicólogo ou CAPS.</p>
     <div class="chat" id="chat"></div>
     <div class="quick" id="quick">
       <button class="chip" data-q="Estou com muita vontade de pegar dinheiro agora.">Estou com vontade agora</button>
@@ -165,7 +160,7 @@
       <button class="chip" data-q="Tive uma recaída e estou me sentindo mal.">Tive uma recaída</button>
     </div>
     <div class="composer">
-      <textarea id="c-in" placeholder="Escreva como você está..." aria-label="Mensagem"></textarea>
+      <textarea id="c-in" placeholder="Escreva como você está" aria-label="Mensagem"></textarea>
       <button class="btn-primary" id="c-send">Enviar</button>
     </div>
     <div class="row"><button class="btn-link" id="c-stop" hidden>Parar resposta</button><button class="btn-link" id="c-clear">Limpar conversa</button></div>
@@ -186,15 +181,15 @@
 
     <!-- Resumo -->
     <div id="s-resumo" class="stack" data-subview>
-      <div class="mes-sel"><button data-mes="-1" aria-label="Mês anterior">‹</button><b class="mes-nome"></b><button data-mes="1" aria-label="Próximo mês">›</button></div>
+      <div class="mes-sel"><button class="icon-btn" data-mes="-1" aria-label="Mês anterior"><i data-ic="esq"></i></button><b class="mes-nome"></b><button class="icon-btn" data-mes="1" aria-label="Próximo mês"><i data-ic="dir"></i></button></div>
       <div class="alerts" id="r-alertas"></div>
-      <div class="card">
-        <div class="money">
-          <div><span class="small muted">Entrou</span><b id="r-ent">R$ 0</b></div>
-          <div><span class="small muted">Saiu</span><b id="r-sai">R$ 0</b></div>
-          <div class="full" id="r-sal-box"><span class="small muted" id="r-sal-l">Saldo do mês</span><b id="r-sal">R$ 0</b></div>
+      <div class="card saldo">
+        <div id="r-sal-box"><span class="muted small" id="r-sal-l">Saldo do mês</span><b class="big" id="r-sal">R$ 0</b></div>
+        <div class="io">
+          <div><span class="dot in"></span><span class="muted small">Entrou</span><b id="r-ent">R$ 0</b></div>
+          <div><span class="dot out"></span><span class="muted small">Saiu</span><b id="r-sai">R$ 0</b></div>
         </div>
-        <p class="note">Compras no cartão entram no mês em que a fatura vence. Pagamento de fatura e transferência entre suas contas não contam como gasto.</p>
+        <p class="note">Compras no cartão contam no mês em que a fatura vence. Pagamento de fatura e transferências entre suas contas ficam de fora.</p>
       </div>
 
       <div class="card">
@@ -204,36 +199,35 @@
 
       <div class="card">
         <h2>Últimos 6 meses</h2>
-        <div class="leg"><span><i style="background:var(--s-in)"></i>Entrou</span><span><i style="background:var(--s-out)"></i>Saiu</span></div>
+        <div class="leg"><span><i class="in"></i>Entrou</span><span><i class="out"></i>Saiu</span></div>
         <div class="chart" id="r-meses"></div>
         <details class="tbl"><summary>Ver em tabela</summary><div id="r-meses-tbl"></div></details>
       </div>
 
       <div class="card">
         <h2>Antes de pegar, olhe aqui</h2>
-        <p class="muted small">O que está previsto para o mês. Quando bater a vontade, veja quanto realmente sobra.</p>
-        <div class="money">
-          <div><span class="small muted">Entra no mês</span><b id="f-renda-v">R$ 0</b></div>
-          <div><span class="small muted">Contas fixas</span><b id="f-contas-v">R$ 0</b></div>
-          <div><span class="small muted">Faturas do cartão</span><b id="f-fat-v">R$ 0</b></div>
-          <div><span class="small muted">Dívidas a pagar</span><b id="f-parc-v">R$ 0</b></div>
-          <div class="j full"><span class="small muted" id="f-sobra-l">Sobra do mês</span><b id="f-sobra-v">R$ 0</b></div>
-        </div>
+        <dl class="conta-lista">
+          <div><dt>Entra no mês</dt><dd id="f-renda-v">R$ 0</dd></div>
+          <div><dt>Contas fixas</dt><dd id="f-contas-v">R$ 0</dd></div>
+          <div><dt>Faturas do cartão</dt><dd id="f-fat-v">R$ 0</dd></div>
+          <div><dt>Dívidas a pagar</dt><dd id="f-parc-v">R$ 0</dd></div>
+          <div class="tot j"><dt id="f-sobra-l">Sobra do mês</dt><dd id="f-sobra-v">R$ 0</dd></div>
+        </dl>
         <p class="small" id="f-dica"></p>
         <label class="field">Quanto entra por mês (R$)<input id="f-renda" class="valor" inputmode="decimal" placeholder="Salário, bicos, pensão..."></label>
       </div>
 
       <div class="card">
-        <h2>Plano do mês com a IA</h2>
-        <p class="muted small">A IA lê seus números e sugere como dividir a sobra entre dívidas, objetivos e o dia a dia.</p>
+        <h2>Plano do mês</h2>
+        <p class="muted small">A IA lê seus números e sugere como dividir o dinheiro do mês.</p>
         <div class="ai-out" id="fin-out" hidden></div>
-        <button class="btn-ghost" id="fin-btn">Montar meu plano do mês</button>
+        <button class="btn-soft" id="fin-btn"><i data-ic="ia"></i>Montar plano do mês</button>
       </div>
     </div>
 
     <!-- Lançamentos -->
     <div id="s-lanc" class="stack" data-subview hidden>
-      <div class="mes-sel"><button data-mes="-1" aria-label="Mês anterior">‹</button><b class="mes-nome"></b><button data-mes="1" aria-label="Próximo mês">›</button></div>
+      <div class="mes-sel"><button class="icon-btn" data-mes="-1" aria-label="Mês anterior"><i data-ic="esq"></i></button><b class="mes-nome"></b><button class="icon-btn" data-mes="1" aria-label="Próximo mês"><i data-ic="dir"></i></button></div>
       <div class="card">
         <div class="row" style="flex-wrap:nowrap">
           <input id="l-busca" type="search" placeholder="Buscar" aria-label="Buscar lançamento" style="flex:1;min-width:0">
@@ -246,14 +240,9 @@
 
     <!-- Orçamento -->
     <div id="s-orc" class="stack" data-subview hidden>
-      <div class="mes-sel"><button data-mes="-1" aria-label="Mês anterior">‹</button><b class="mes-nome"></b><button data-mes="1" aria-label="Próximo mês">›</button></div>
+      <div class="mes-sel"><button class="icon-btn" data-mes="-1" aria-label="Mês anterior"><i data-ic="esq"></i></button><b class="mes-nome"></b><button class="icon-btn" data-mes="1" aria-label="Próximo mês"><i data-ic="dir"></i></button></div>
       <div class="card">
-        <h2>Orçamento por categoria</h2>
-        <p class="muted small">Defina quanto quer gastar por mês em cada categoria. O limite vale para todos os meses. A barra fica laranja perto do limite e vermelha quando passa.</p>
-        <div class="money">
-          <div><span class="small muted">Orçado</span><b id="o-orc">R$ 0</b></div>
-          <div><span class="small muted">Gasto até agora</span><b id="o-gasto">R$ 0</b></div>
-        </div>
+        <dl class="kv kv2"><div><dt>Orçado por mês</dt><dd id="o-orc">R$ 0</dd></div><div><dt>Gasto no mês</dt><dd id="o-gasto">R$ 0</dd></div></dl>
         <p class="small" id="o-dica"></p>
       </div>
       <div class="card">
@@ -262,9 +251,8 @@
       <div class="card">
         <h3>Nova categoria</h3>
         <div class="row" style="flex-wrap:nowrap">
-          <input id="o-cat-ic" placeholder="🐶" maxlength="4" aria-label="Ícone (emoji)" style="flex:0 0 3.6rem;text-align:center">
           <input id="o-cat-nome" placeholder="Ex.: Pet" style="flex:1;min-width:0" aria-label="Nome da categoria">
-          <button class="btn-ghost" id="o-cat-add">Criar</button>
+          <button class="btn-soft" id="o-cat-add">Criar</button>
         </div>
       </div>
     </div>
@@ -280,17 +268,17 @@
           <label class="field" style="flex:1;min-width:0">Vence dia<input id="c-vence" inputmode="numeric" placeholder="10"></label>
           <label class="field" style="flex:1.3;min-width:0">Limite (R$)<input id="c-lim" class="valor" inputmode="decimal"></label>
         </div>
-        <button class="btn-ghost" id="c-add">Adicionar cartão</button>
-        <p class="note">Cartões do banco conectado aparecem aqui sozinhos.</p>
+        <button class="btn-soft" id="c-add">Adicionar cartão</button>
+        <p class="note">Cartões do banco conectado entram sozinhos.</p>
       </div>
     </div>
 
     <!-- Contas (agenda) -->
     <div id="s-agenda" class="stack" data-subview hidden>
-      <div class="mes-sel"><button data-mes="-1" aria-label="Mês anterior">‹</button><b class="mes-nome"></b><button data-mes="1" aria-label="Próximo mês">›</button></div>
+      <div class="mes-sel"><button class="icon-btn" data-mes="-1" aria-label="Mês anterior"><i data-ic="esq"></i></button><b class="mes-nome"></b><button class="icon-btn" data-mes="1" aria-label="Próximo mês"><i data-ic="dir"></i></button></div>
       <div class="card">
         <div class="agenda" id="a-cal"></div>
-        <div class="legend"><span><i style="background:var(--warn)"></i>A pagar</span><span><i style="background:var(--good)"></i>Paga</span><span><i style="background:var(--alert)"></i>Atrasada</span></div>
+        <div class="legend"><span><i class="lg-warn"></i>A pagar</span><span><i class="lg-ok"></i>Paga</span><span><i class="lg-alert"></i>Atrasada</span></div>
         <div id="a-dia" class="stack"></div>
       </div>
       <div class="card">
@@ -306,47 +294,45 @@
         </div>
         <input id="fc-valor" class="valor" inputmode="decimal" placeholder="Valor (R$)" aria-label="Valor da conta">
         <select id="fc-cat" aria-label="Categoria da conta"></select>
-        <button class="btn-ghost" id="fc-add">Adicionar conta</button>
-        <label class="check" style="border:0"><input type="checkbox" id="fc-auto"><span class="small">Ao marcar uma conta como paga, lançar o gasto automaticamente. Desligue se o banco conectado já traz esses pagamentos.</span></label>
+        <button class="btn-soft" id="fc-add">Adicionar conta</button>
+        <label class="check" style="border:0"><input type="checkbox" id="fc-auto"><span class="small">Lançar o gasto quando eu marcar a conta como paga<br><span class="muted">Desligue se o banco já traz esses pagamentos.</span></span></label>
       </div>
     </div>
 
     <!-- Dívidas e objetivos -->
     <div id="s-dividas" class="stack" data-subview hidden>
       <div class="card">
-        <h2>Dívidas para quitar</h2>
-        <p class="muted small">Ordenadas pelos juros: a de juro mais alto aparece primeiro, porque é a que mais cresce.</p>
+        <h2>Dívidas</h2>
+        <p class="muted small">A de juro mais alto vem primeiro: é a que mais cresce.</p>
         <div id="f-dividas" class="stack"></div>
-        <div class="stack" style="border-top:1px solid var(--line);padding-top:12px">
+        <div class="stack sep">
+          <h3>Nova dívida</h3>
           <label class="field">Para quem devo<input id="fd-credor" placeholder="Ex.: agiota, cartão, parente"></label>
           <div class="row" style="flex-wrap:nowrap">
             <label class="field" style="flex:1;min-width:0">Peguei (R$)<input id="fd-valor" class="valor" inputmode="decimal"></label>
             <label class="field" style="flex:1;min-width:0">Juros % ao mês<input id="fd-juros" inputmode="decimal"></label>
           </div>
-          <label class="field">Vou pagar, com juros (R$)<input id="fd-parc" class="valor" inputmode="decimal" placeholder="Deixe vazio para calcular pelos juros"></label>
-          <button class="btn-ghost" id="fd-add">Adicionar dívida</button>
+          <label class="field">Vou pagar, com juros <span class="opt">se vazio, calcula pelos juros</span><input id="fd-parc" class="valor" inputmode="decimal" placeholder="R$ 0"></label>
+          <button class="btn-soft" id="fd-add">Adicionar dívida</button>
         </div>
       </div>
 
       <div class="card">
         <h2>Dinheiro protegido</h2>
-        <div class="money">
-          <div><span class="small muted">Valores que você não pegou</span><b id="m-val">R$ 0</b></div>
-          <div class="j"><span class="small muted" id="m-jlbl">Juros que não vai pagar</span><b id="m-jur">R$ 0</b></div>
-        </div>
-        <p class="note">Registre o valor sempre que vencer uma vontade, no SOS ou em Gatilhos.</p>
+        <dl class="kv kv2"><div><dt>Que você não pegou</dt><dd id="m-val">R$ 0</dd></div><div class="j"><dt id="m-jlbl">Juros evitados</dt><dd id="m-jur">R$ 0</dd></div></dl>
+        <p class="note">Some aqui o valor de cada vontade vencida, no SOS ou em Gatilhos.</p>
       </div>
 
       <div class="card">
-        <h2>Meus objetivos</h2>
+        <h2>Objetivos</h2>
         <p class="muted small" id="obj-hint">Dê um destino para o dinheiro que não foi para os juros. Quando guardar de verdade, registre aqui.</p>
         <div class="stack" id="objetivos"></div>
-        <div class="stack" style="border-top:1px solid var(--line);padding-top:12px">
+        <div class="stack sep">
           <h3>Novo objetivo</h3>
           <div class="chips" id="obj-sug"></div>
           <label class="field">O que eu quero conquistar<input id="obj-nome" placeholder="Ex.: Reserva de emergência"></label>
           <label class="field">Quanto custa (R$)<input id="obj-meta" class="valor" inputmode="decimal" placeholder="Ex.: 2000"></label>
-          <button class="btn-primary" id="obj-add">Criar objetivo</button>
+          <button class="btn-soft" id="obj-add">Criar objetivo</button>
         </div>
       </div>
     </div>
@@ -356,80 +342,79 @@
       <div class="card">
         <h2>Banco conectado</h2>
         <div class="status" id="b-status"><i></i><span>Nenhum banco conectado</span></div>
-        <p class="muted small">A conexão é feita pelo Open Finance, através do Meu Pluggy. O app só lê saldos e movimentações. Ele não consegue fazer pagamento nem transferência, e nunca vê a senha do seu banco.</p>
+        <p class="muted small">Pelo Open Finance, através do Meu Pluggy. O app só lê saldos e movimentações e nunca vê a senha do banco.</p>
         <div id="b-contas" class="stack"></div>
         <div class="row">
-          <button class="btn-primary" id="b-sync">Atualizar agora</button>
-          <button class="btn-ghost" id="b-conectar">Conectar Meu Pluggy</button>
+          <button class="btn-primary" id="b-sync"><i data-ic="atualizar"></i>Atualizar</button>
+          <button class="btn-soft" id="b-conectar">Conectar Meu Pluggy</button>
         </div>
         <p class="note" id="b-msg"></p>
       </div>
       <div class="card">
-        <h3>Servidor da conexão</h3>
-        <p class="muted small">Endereço do seu Cloudflare Worker (o passo a passo está no README do projeto).</p>
+        <h2>Servidor da conexão</h2>
+        <p class="muted small">Endereço do seu Worker na Cloudflare.</p>
         <input id="b-url" inputmode="url" placeholder="https://dia-livre-banco.SEU-NOME.workers.dev" aria-label="Endereço do servidor">
         <label class="field">Trazer movimentações desde<input type="date" id="b-desde"></label>
         <details>
           <summary class="small muted">Já tenho o ID da conexão (item)</summary>
-          <div class="row" style="flex-wrap:nowrap;margin-top:8px"><input id="b-item" placeholder="ID do item da Pluggy" style="flex:1;min-width:0"><button class="btn-ghost" id="b-item-add">Usar</button></div>
+          <div class="row" style="flex-wrap:nowrap;margin-top:8px"><input id="b-item" placeholder="ID do item da Pluggy" style="flex:1;min-width:0"><button class="btn-soft" id="b-item-add">Usar</button></div>
         </details>
         <button class="btn-link" id="b-desligar" hidden>Desconectar e apagar dados do banco</button>
       </div>
     </div>
 
-    <button class="fab" id="fab" aria-label="Novo lançamento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="fab" id="fab" aria-label="Novo lançamento"><i data-ic="mais"></i></button>
   </section>
 
   <!-- APOIO -->
   <section id="v-apoio" class="stack" data-view hidden>
     <div class="card">
       <h2>Meus motivos</h2>
-      <p class="muted small">Aparecem no SOS, na hora em que você mais precisa deles.</p>
+      <p class="muted small">Aparecem no SOS.</p>
       <ul class="list" id="motivos"></ul>
-      <div class="composer"><input id="mot-in" placeholder="Novo motivo"><button class="btn-primary" id="mot-add">Adicionar</button></div>
+      <div class="composer"><input id="mot-in" placeholder="Novo motivo" aria-label="Novo motivo"><button class="btn-soft" id="mot-add">Adicionar</button></div>
     </div>
     <div class="card">
       <h2>Carta para mim mesma</h2>
       <p class="muted small">Escreva num dia bom, para ler num dia difícil.</p>
-      <textarea id="carta" placeholder="Se você está lendo isso é porque bateu a vontade..."></textarea>
+      <textarea id="carta" placeholder="Se você está lendo isso, é porque bateu a vontade..."></textarea>
     </div>
     <div class="card">
       <h2>Barreiras</h2>
-      <p class="muted small">Cada barreira deixa o impulso mais difícil de virar ação.</p>
       <div id="barreiras"></div>
     </div>
     <div class="card">
       <h2>Rede de apoio</h2>
-      <div class="contact"><div><b>CVV</b><p class="small muted">Apoio emocional, 24 horas, gratuito</p></div><span class="num">188</span></div>
-      <div class="contact"><div><b>CAPS</b><p class="small muted">Atendimento pelo SUS para comportamento compulsivo. Procure o da sua região.</p></div></div>
-      <div class="contact"><div><b>Polícia</b><p class="small muted">Se houver ameaça ou cobrança violenta</p></div><span class="num">190</span></div>
-      <div class="contact" id="ct-show" hidden><div><b id="ct-name"></b><p class="small muted">Minha pessoa de confiança</p></div><span class="num" id="ct-tel"></span></div>
-      <div class="stack">
-        <p class="small muted">Opcional. Se você cadastrar alguém, o nome e o telefone aparecem no SOS.</p>
-        <label class="field">Pessoa de confiança (opcional)<input id="ct-in-name" placeholder="Nome"></label>
+      <a class="contact" href="tel:188"><span class="c-ic"><i data-ic="telefone"></i></span><span class="c-t"><b>CVV</b><small>Apoio emocional, 24 horas, gratuito</small></span><span class="num">188</span></a>
+      <div class="contact"><span class="c-ic"><i data-ic="apoio"></i></span><span class="c-t"><b>CAPS</b><small>Atendimento pelo SUS. Procure o da sua região.</small></span></div>
+      <a class="contact" href="tel:190"><span class="c-ic"><i data-ic="escudo"></i></span><span class="c-t"><b>Polícia</b><small>Ameaça ou cobrança violenta</small></span><span class="num">190</span></a>
+      <a class="contact" id="ct-show" hidden><span class="c-ic"><i data-ic="familia"></i></span><span class="c-t"><b id="ct-name"></b><small>Pessoa de confiança</small></span><span class="num" id="ct-tel"></span></a>
+      <div class="stack sep">
+        <h3>Pessoa de confiança <span class="opt">opcional</span></h3>
+        <label class="field">Nome<input id="ct-in-name" placeholder="Nome"></label>
         <label class="field">Telefone<input id="ct-in-tel" inputmode="tel" placeholder="(21) 9..."></label>
       </div>
     </div>
     <div class="card">
       <h2>Ajustes</h2>
-      <label class="field">Como quer ser chamada (opcional)<input id="aj-nome" placeholder="Seu nome"></label>
+      <label class="field">Como quer ser chamada<input id="aj-nome" placeholder="Seu nome"></label>
       <label class="field">Estou sem pegar desde<input type="date" id="aj-inicio"></label>
       <label class="field">Juros que o agiota costuma cobrar (% ao mês)<input id="aj-taxa" inputmode="decimal"></label>
-      <button class="btn-ghost" data-abrir-visual>Aparência: cores e fontes</button>
+      <button class="btn-soft" data-abrir-visual><i data-ic="paleta"></i>Aparência</button>
       <p class="note" id="aj-store"></p>
-      <button class="btn-ghost" id="logout" hidden>Sair da conta</button>
+      <button class="btn-link" id="logout" hidden>Sair da conta</button>
     </div>
   </section>
 </div>
 
 <nav class="tabs" aria-label="Seções">
   <div class="in">
-    <button data-tab="hoje" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Hoje</button>
-    <button data-tab="gatilhos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Gatilhos</button>
-    <button data-tab="sos" class="sos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c3-4 5-4 8 0s5 4 8 0 3-2 4-1"/><path d="M2 17c3-3 5-3 8 0s5 3 8 0"/></svg>SOS</button>
-    <button data-tab="dinheiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12.5h2M3 10h18"/></svg>Dinheiro</button>
-    <button data-tab="conversa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>Conversa</button>
-    <button data-tab="apoio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Apoio</button>
+    <button data-tab="hoje" aria-current="page"><span class="t-ic"><i data-ic="hoje"></i></span>Hoje</button>
+    <button data-tab="gatilhos"><span class="t-ic"><i data-ic="gatilhos"></i></span>Gatilhos</button>
+    <button data-tab="sos" class="sos"><span class="t-ic"><i data-ic="sos"></i></span>SOS</button>
+    <button data-tab="dinheiro"><span class="t-ic"><i data-ic="dinheiro"></i></span>Dinheiro</button>
+    <button data-tab="conversa"><span class="t-ic"><i data-ic="conversa"></i></span>Conversa</button>
+    <button data-tab="apoio"><span class="t-ic"><i data-ic="apoio"></i></span>Apoio</button>
   </div>
 </nav>
 
@@ -438,12 +423,12 @@
 <div class="sheet" id="sh-lanc" hidden role="dialog" aria-modal="true" aria-labelledby="sl-tit">
   <div class="in">
     <div class="grab"></div>
-    <div class="between"><h2 id="sl-tit">Novo lançamento</h2><button class="btn-link" data-fechar>Fechar</button></div>
+    <div class="between"><h2 id="sl-tit">Novo lançamento</h2><button class="icon-btn" data-fechar aria-label="Fechar"><i data-ic="fechar"></i></button></div>
     <div class="seg" id="sl-tipo"><button data-t="s" aria-pressed="true">Saiu</button><button data-t="e" aria-pressed="false">Entrou</button></div>
-    <label class="field">Valor (R$)<input id="sl-valor" class="valor" inputmode="decimal" placeholder="Ex.: 45,90 ou 30+15,90"></label>
+    <label class="field">Valor (R$)<input id="sl-valor" class="valor" inputmode="decimal" placeholder="R$ 0"></label>
     <label class="field">Descrição<input id="sl-desc" placeholder="Ex.: mercado do mês" list="sl-sug"></label>
     <datalist id="sl-sug"></datalist>
-    <div class="stack"><span class="small" style="font-weight:700">Categoria</span><div class="chips" id="sl-cats"></div></div>
+    <div class="stack"><span class="lbl-f">Categoria</span><div class="chips" id="sl-cats"></div></div>
     <div class="row" style="flex-wrap:nowrap">
       <label class="field" style="flex:1;min-width:0">Data<input type="date" id="sl-data"></label>
       <label class="field" style="flex:1;min-width:0">Pago com<select id="sl-conta"></select></label>
@@ -460,19 +445,19 @@
 <div class="sheet" id="sh-visual" hidden role="dialog" aria-modal="true" aria-labelledby="sv-tit">
   <div class="in">
     <div class="grab"></div>
-    <div class="between"><h2 id="sv-tit">Aparência</h2><button class="btn-link" data-fechar>Pronto</button></div>
+    <div class="between"><h2 id="sv-tit">Aparência</h2><button class="btn-soft btn-sm" data-fechar>Pronto</button></div>
     <div class="stack"><h3>Tema</h3><div class="temas" id="sv-temas"></div></div>
-    <div class="stack"><h3>Cor principal</h3><p class="small muted">Troque só a cor dos botões e destaques, mantendo o tema.</p><div class="cores" id="sv-cores"></div></div>
+    <div class="stack"><h3>Cor principal</h3><div class="cores" id="sv-cores"></div></div>
     <div class="stack"><h3>Cor de destaque</h3><div class="cores" id="sv-destaques"></div></div>
     <div class="stack"><h3>Fonte</h3><div class="fontes" id="sv-fontes"></div></div>
     <div class="stack"><h3>Tamanho da letra</h3><div class="seg" id="sv-tam"></div></div>
     <div class="stack"><h3>Cantos</h3><div class="seg" id="sv-cantos"></div></div>
     <div class="stack"><h3>Claro ou escuro</h3><div class="seg" id="sv-modo"></div></div>
-    <button class="btn-ghost" id="sv-reset">Voltar ao visual original</button>
+    <button class="btn-link" id="sv-reset">Voltar ao visual original</button>
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=2"></script>
+<script type="module" src="js/main.js?v=3"></script>
 
 </body>
 </html>

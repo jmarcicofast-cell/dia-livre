@@ -13,7 +13,8 @@ export const TEMAS = {
 export const CORES_RAPIDAS = ["#1E6C64","#2B7A3D","#1F5FA8","#0E7C99","#6A4FB3","#9B3FA6","#B03A6A","#C2453C","#A24F2E","#B07A12","#33393D"];
 
 export const FONTES = {
-  moderna:  { nome:"Moderna",   d:"Bricolage Grotesque", b:"Atkinson Hyperlegible", q:"family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400" },
+  moderna:  { nome:"Padrão",    d:"Figtree", b:"Figtree", q:"family=Figtree:wght@400;500;600;700;800" },
+  expressiva:{ nome:"Expressiva", d:"Bricolage Grotesque", b:"Atkinson Hyperlegible", q:"family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400" },
   redonda:  { nome:"Redonda",   d:"Nunito", b:"Nunito", q:"family=Nunito:wght@400;600;700;800" },
   elegante: { nome:"Elegante",  d:"Fraunces", b:"DM Sans", q:"family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=DM+Sans:wght@400;500;700" },
   classica: { nome:"Clássica",  d:"Lora", b:"Source Sans 3", q:"family=Lora:wght@500;600;700&family=Source+Sans+3:wght@400;600;700" },
