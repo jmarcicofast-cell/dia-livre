@@ -16,3 +16,6 @@ export const RECAPTCHA_SITE_KEY = "6Ld0GfktAAAAAAJBuqv8fAtumRJV6mq0clrmM1Lq";
 
 // Modelo Gemini usado pela IA de apoio (Firebase AI Logic, Gemini Developer API).
 export const GEMINI_MODEL = "gemini-3.8-flash";
+
+// Endereço do servidor da conexão com o banco (Cloudflare Worker). Também dá para colar na aba Dinheiro > Banco.
+export const PLUGGY_WORKER_URL = "";
