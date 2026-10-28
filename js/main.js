@@ -118,7 +118,10 @@ async function connect(){
       : "Não foi possível entrar. Tente de novo.";
     $("#login-err").textContent = msg + (c ? " ("+c.replace("auth/","")+")" : "");
   };
-  getRedirectResult(auth).catch(erroLogin);
+  // Só confere o retorno do login por redirecionamento se ele foi mesmo usado. Antes, essa conferência
+  // ficava pendente e, ao tocar em Entrar, era cancelada pela janela do Google (cancelled-popup-request).
+  let viaRedirect=false; try{ viaRedirect = sessionStorage.getItem("dl-redirect")==="1"; sessionStorage.removeItem("dl-redirect"); }catch(e){}
+  if(viaRedirect) getRedirectResult(auth).catch(e=>{ if(!/cancelled-popup/.test(e&&e.code||"")) erroLogin(e); });
   const atalhoIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && (navigator.standalone || matchMedia("(display-mode: standalone)").matches);
   let entrando=false;
   $("#login-btn").onclick = async ()=>{
@@ -129,7 +132,7 @@ async function connect(){
     try{ await signInWithPopup(auth,p); }
     catch(e){
       const c=(e&&e.code)||"";
-      if(/popup-blocked|operation-not-supported/.test(c)) { try{ await signInWithRedirect(auth,p); }catch(e2){ erroLogin(e2); } }
+      if(/popup-blocked|operation-not-supported/.test(c)) { try{ try{ sessionStorage.setItem("dl-redirect","1"); }catch(_){} await signInWithRedirect(auth,p); }catch(e2){ erroLogin(e2); } }
       else if(/cancelled-popup/.test(c)) {}
       else if(atalhoIOS && /popup-closed/.test(c)) $("#login-err").textContent="No iPhone, o atalho da tela inicial às vezes não recebe a resposta do Google. Toque em Entrar de novo e espere a janela abrir sem tocar outra vez. Se não der, abra o endereço do Dia Livre no Safari e entre por lá: seus dados são os mesmos.";
       else erroLogin(e);
