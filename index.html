@@ -312,7 +312,11 @@
             <label class="field" style="flex:1;min-width:0">Peguei (R$)<input id="fd-valor" class="valor" inputmode="decimal"></label>
             <label class="field" style="flex:1;min-width:0">Juros % ao mês<input id="fd-juros" inputmode="decimal"></label>
           </div>
-          <label class="field">Vou pagar, com juros <span class="opt">se vazio, calcula pelos juros</span><input id="fd-parc" class="valor" inputmode="decimal" placeholder="R$ 0"></label>
+          <div class="row" style="flex-wrap:nowrap">
+            <label class="field" style="flex:2;min-width:0">Vou pagar, com juros <span class="opt">se vazio, calcula</span><input id="fd-parc" class="valor" inputmode="decimal" placeholder="R$ 0"></label>
+            <label class="field" style="flex:1;min-width:0">Parcelas<input id="fd-n" inputmode="numeric" placeholder="1"></label>
+          </div>
+          <p class="muted small" id="fd-prev" hidden></p>
           <button class="btn-soft" id="fd-add">Adicionar dívida</button>
         </div>
       </div>
@@ -457,7 +461,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=6"></script>
+<script type="module" src="js/main.js?v=7"></script>
 
 </body>
 </html>
