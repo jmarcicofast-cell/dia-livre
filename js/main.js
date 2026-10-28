@@ -129,15 +129,21 @@ async function connect(){
     entrando=true; const btn=$("#login-btn"), txt=btn.textContent; btn.disabled=true; btn.textContent="Abrindo o Google…";
     $("#login-err").textContent="";
     const p=new GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"});
-    try{ await signInWithPopup(auth,p); }
+    // No atalho da tela inicial do iPhone a janela do Google às vezes nunca devolve resposta e o botão ficava
+    // preso em "Abrindo o Google…". Depois de 20 s o botão volta e explica o que fazer (se o login chegar depois, entra igual).
+    let espera; const tempo=new Promise((_,rej)=>{ espera=setTimeout(()=>rej({code:"dl/timeout"}),20000); });
+    try{ await Promise.race([signInWithPopup(auth,p), tempo]); }
     catch(e){
       const c=(e&&e.code)||"";
       if(/popup-blocked|operation-not-supported/.test(c)) { try{ try{ sessionStorage.setItem("dl-redirect","1"); }catch(_){} await signInWithRedirect(auth,p); }catch(e2){ erroLogin(e2); } }
+      else if(c==="dl/timeout") $("#login-err").textContent = atalhoIOS
+        ? "O iPhone não devolveu a resposta do Google para o atalho da tela inicial. Abra o Safari, digite jmarcicofast-cell.github.io/dia-livre e entre por lá. Seus dados são os mesmos."
+        : "O Google não respondeu. Feche a janela do Google, se ela estiver aberta, e toque em Entrar de novo.";
       else if(/cancelled-popup/.test(c)) {}
       else if(atalhoIOS && /popup-closed/.test(c)) $("#login-err").textContent="No iPhone, o atalho da tela inicial às vezes não recebe a resposta do Google. Toque em Entrar de novo e espere a janela abrir sem tocar outra vez. Se não der, abra o endereço do Dia Livre no Safari e entre por lá: seus dados são os mesmos.";
       else erroLogin(e);
     }
-    finally{ entrando=false; btn.disabled=false; btn.textContent=txt; }
+    finally{ clearTimeout(espera); entrando=false; btn.disabled=false; btn.textContent=txt; }
   };
   $("#logout").onclick = async ()=>{ await saving; saveRef=null; try{ localStorage.removeItem("dialivre"); }catch(e){} S=DEF(); aplicarVisual(S.visual); renderAll(); await signOut(auth); };
   onAuthStateChanged(auth, async user=>{
