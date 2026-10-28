@@ -84,6 +84,17 @@ function geminiSample(model){
     turns.forEach(t=>{ const role=t.role==="assistant"?"model":"user"; const last=contents[contents.length-1];
       if(last && last.role===role) last.parts[0].text += "\n\n"+t.content; else contents.push({role, parts:[{text:t.content}]}); });
     let text="";
+    // Primeiro tenta a IA pelo servidor da Cloudflare (chave do AI Studio). Se ele ainda não tiver a chave,
+    // usa o Firebase AI Logic, como antes.
+    const srv=(PLUGGY_WORKER_URL||"").trim().replace(/\/+$/,"");
+    if(srv && auth && auth.currentUser){
+      let r=null, j={};
+      try{ r=await fetch(srv+"/ia",{method:"POST",signal:opts.signal,headers:{"Content-Type":"application/json","Authorization":"Bearer "+await auth.currentUser.getIdToken()},body:JSON.stringify({contents,model:GEMINI_MODEL||"gemini-3.8-flash"})}); j=await r.json().catch(()=>({})); }
+      catch(e){ if(opts.signal && opts.signal.aborted) throw {code:"cancelled"}; r=null; }
+      if(r && r.ok && j.text && j.text.trim()){ opts.onText && opts.onText({text:j.text, delta:j.text}); return {text:j.text, truncated:false}; }
+      if(r && r.status===429) throw {code:"rate_limited", message:j.erro||""};
+      if(r && j.erro && !/Falta configurar GEMINI_API_KEY|Rota não encontrada/.test(j.erro)) throw {code:"upstream_error", message:"Servidor: "+j.erro};
+    }
     try{
       const res = await model.generateContentStream({contents});
       for await (const ch of res.stream){

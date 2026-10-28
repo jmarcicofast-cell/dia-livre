@@ -7,10 +7,12 @@
 //   ALLOWED_EMAIL         (Text)    e-mail(s) do Google usados no Dia Livre, separados por vírgula
 //   FIREBASE_PROJECT_ID   (Text)    dia-livre
 //   ALLOWED_ORIGIN        (Text)    https://jmarcicofast-cell.github.io
+//   GEMINI_API_KEY        (Secret)  chave gratuita do Google AI Studio (aistudio.google.com/apikey), para a IA do app
 //
 // Rotas (todas POST, com "Authorization: Bearer <token do login do Firebase>"):
 //   /connect-token  { itemId? }                     -> { accessToken }   abre a janela do Meu Pluggy
 //   /sync           { itemIds, from, refresh? }     -> { items, accounts, transactions }
+//   /ia             { contents, model? }            -> { text }   IA do app (Gemini), sem depender do Firebase AI Logic
 
 const API = "https://api.pluggy.ai";
 const JWK_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
@@ -32,6 +34,23 @@ export default {
     if (req.method !== "POST") return resp({ erro: "Use POST." }, 405);
 
     try {
+      if (url.pathname === "/ia") {
+        for (const k of ["GEMINI_API_KEY", "ALLOWED_EMAIL", "FIREBASE_PROJECT_ID"])
+          if (!env[k]) return resp({ erro: "Falta configurar " + k + " no Worker." }, 500);
+        if (!await verificarLogin(req.headers.get("Authorization") || "", env))
+          return resp({ erro: "Login não autorizado. Entre no app com o e-mail cadastrado no servidor." }, 401);
+        const corpo = await req.json().catch(() => ({}));
+        const contents = (Array.isArray(corpo.contents) ? corpo.contents : []).slice(-40);
+        if (!contents.length) return resp({ erro: "Mensagem vazia." }, 400);
+        const modelo = /^gemini-[\w.-]+$/.test(corpo.model || "") ? corpo.model : "gemini-3.8-flash";
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + modelo + ":generateContent",
+          { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY }, body: JSON.stringify({ contents }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) return resp({ erro: "Gemini " + r.status + ": " + ((j.error && j.error.message) || "erro") }, r.status === 429 ? 429 : 502);
+        const text = ((j.candidates || [])[0]?.content?.parts || []).map(p => p.text || "").join("");
+        return resp({ text });
+      }
+
       for (const k of ["PLUGGY_CLIENT_ID", "PLUGGY_CLIENT_SECRET", "ALLOWED_EMAIL", "FIREBASE_PROJECT_ID"])
         if (!env[k]) return resp({ erro: "Falta configurar " + k + " no Worker." }, 500);
 
