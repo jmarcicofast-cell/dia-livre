@@ -1245,7 +1245,12 @@ function aiErr(e){
   if(c==="not_granted") return "A IA recusou o acesso (falta concluir o App Check no Firebase). Detalhe: "+String(e.message||"").slice(0,160);
   if(c==="rate_limited") return "Muitas mensagens em pouco tempo. Respire um pouco e tente de novo daqui a alguns minutos.";
   if(c==="cancelled") return "";
-  return "Não consegui responder agora. Detalhe: "+String((e&&e.message)||e||"").slice(0,160);
+  const m=String((e&&e.message)||e||"");
+  const motivo=(m.split(/\]\s*/).slice(1).join("] ")||m).replace(/https?:\/\/\S+/g,"").trim(); // tira o endereço longo e deixa o motivo
+  if(/API key not valid|API_KEY_INVALID/i.test(m)) return "A chave do Firebase foi recusada pela IA. Detalhe: "+motivo.slice(0,300);
+  if(/location is not supported/i.test(m)) return "A IA não está liberada para esta região. Detalhe: "+motivo.slice(0,300);
+  if(/billing|quota|RESOURCE_EXHAUSTED/i.test(m)) return "A cota gratuita da IA acabou por hoje ou exige faturamento. Detalhe: "+motivo.slice(0,300);
+  return "Não consegui responder agora. Detalhe: "+motivo.slice(0,400);
 }
 async function incentivo(){
   if(!sample) return;
