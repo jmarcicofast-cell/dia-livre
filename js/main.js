@@ -828,6 +828,35 @@ function renderAgenda(){
 }
 
 /* ---------- Dívidas e objetivos ---------- */
+let divEdit="";
+function campo(rotulo, valor, op={}){ const l=el("label","field"); l.style.flex=op.flex||"1"; l.style.minWidth="0"; l.append(rotulo);
+  const i=el("input",op.valor?"valor":null); if(op.type) i.type=op.type; if(op.mode) i.inputMode=op.mode; i.value=valor??""; l.append(i); return [l,i]; }
+function editorDivida(d){
+  const box=el("div","stack sep"); const n0=d.n>1?d.n:1;
+  const [lc,ic]=campo("Para quem devo", d.credor);
+  const [ls,is]=campo("Peguei (R$)", fmt(d.saldo), {valor:1,mode:"decimal"});
+  const [lj,ij]=campo("Juros % ao mês", d.juros||"", {mode:"decimal"});
+  const [ln,inn]=campo("Parcelas", n0, {mode:"numeric"});
+  const [lv,iv]=campo(n0>1?"Valor de cada parcela":"Vou pagar, com juros", fmt(n0>1?d.vParc:totalDivida(d)), {valor:1,mode:"decimal",flex:"2"});
+  const [lm,im]=campo("Começo a pagar em", d.inicio||monthKey(), {type:"month",flex:"2"});
+  const [ld,idd]=campo("Vence dia", d.dia||10, {mode:"numeric"});
+  const prev=el("p","muted small");
+  const ler=()=>calcDivida(num(is.value), num(ij.value), parseInt(inn.value)||1, num(iv.value));
+  const atual=()=>{ const x=ler(); lv.firstChild.textContent = x.n>1?"Valor de cada parcela":"Vou pagar, com juros";
+    prev.textContent = (x.n>1 ? x.n+"x de "+brl(x.vParc)+" = " : "Total ")+brl(x.total)+" ("+brl(x.total-x.saldo)+" de juros)"+(d.pago?" · já pago "+brl(d.pago):""); };
+  // ao mudar juros, peguei ou parcelas, recalcula a parcela sugerida
+  [is,ij,inn].forEach(i=>i.addEventListener("input",()=>{ const x=calcDivida(num(is.value),num(ij.value),parseInt(inn.value)||1,0); iv.value=fmt(x.n>1?x.vParc:x.total); atual(); }));
+  iv.addEventListener("input",atual);
+  const row=(...k)=>{ const r=el("div","row"); r.style.flexWrap="nowrap"; r.append(...k); return r; };
+  const ok=el("button","btn-primary","Salvar"); const cancel=el("button","btn-ghost","Cancelar");
+  ok.onclick=()=>{ const x=ler(); const nome=ic.value.trim(); if(!nome||!x.saldo){ toast("Preencha para quem deve e quanto pegou."); return; }
+    d.credor=nome; aplicarDivida(d,x);
+    if(/^\d{4}-\d{2}$/.test(im.value)) d.inicio=im.value; d.dia=Math.min(31,Math.max(1,parseInt(idd.value)||d.dia||10));
+    divEdit=""; save(); renderDinheiro(); toast("Dívida atualizada."); };
+  cancel.onclick=()=>{ divEdit=""; renderDividas(); };
+  const acts=el("div","acts"); acts.append(ok,cancel);
+  box.append(lc, row(ls,lj), row(lv,ln), row(lm,ld), prev, acts); atual(); return box;
+}
 function renderDividas(){
   const fdv=$("#f-dividas"); fdv.textContent="";
   const all=[...S.fin.dividas].sort((a,b)=>(falta(b)>0)-(falta(a)>0) || b.juros-a.juros);
@@ -840,11 +869,9 @@ function renderDividas(){
     const parcTxt = d.n>1 ? " · "+d.n+"x de "+brl(d.vParc)+" (pagas: "+Math.min(d.n,Math.floor(((d.pago||0)+0.01)/d.vParc))+" de "+d.n+")" : "";
     it.append(el("p","sub", quit ? "Você quitou essa dívida. Total pago: "+brl(d.pago||0)+"." : "Pegou "+brl(d.saldo)+" · "+d.juros+"% ao mês · total a pagar "+brl(totalDivida(d))+" ("+brl(totalDivida(d)-d.saldo)+" de juros)"+parcTxt+(d.pago?" · já pagou "+brl(d.pago):"")));
     if(!quit && d.inicio){ const n=d.n>1?d.n:1;
-      it.append(el("p","sub", (n>1?"Parcelas de "+nomeMes(d.inicio,false)+" a "+nomeMes(addMes(d.inicio,n-1),false):"Pagar em "+nomeMes(d.inicio,false))+", dia "+d.dia+" · aparece em Contas."));
-      const ed=el("div","acts"); const im=el("input"); im.type="month"; im.value=d.inicio; im.setAttribute("aria-label","Começo a pagar em");
-      const idd=el("input"); idd.inputMode="numeric"; idd.value=d.dia; idd.style.maxWidth="4.2rem"; idd.setAttribute("aria-label","Vence dia");
-      const bt=el("button","btn-soft","Mudar data"); bt.onclick=()=>{ if(/^\d{4}-\d{2}$/.test(im.value)) d.inicio=im.value; d.dia=Math.min(31,Math.max(1,parseInt(idd.value)||d.dia)); save(); renderDinheiro(); toast("Data atualizada."); };
-      ed.append(im,idd,bt); it.append(ed); }
+      it.append(el("p","sub", (n>1?"Parcelas de "+nomeMes(d.inicio,false)+" a "+nomeMes(addMes(d.inicio,n-1),false):"Pagar em "+nomeMes(d.inicio,false))+", dia "+d.dia+" · aparece em Contas.")); }
+    if(divEdit===d.id) it.append(editorDivida(d));
+    else { const be=el("button","btn-ghost","Editar"); be.onclick=()=>{ divEdit=d.id; renderDividas(); }; it.append(be); }
     const pad = d.n>1 ? Math.min(d.vParc,falta(d)) : 0;
     if(!quit) it.append(actLine(pad?"Parcela: "+brl(pad):"Valor pago","Registrar pagamento", v=>{ const mkh=monthKey(); if(parcelaNoMes(d,mkh) && !(d.pagMes||{})[mkh]){ marcarDivida(d,mkh,v,true); if(d.total>0) toast("Pagamento registrado. Falta: "+brl(d.total)); return; } d.total=Math.max(0,falta(d)-v); d.pago=(d.pago||0)+v;
       if(S.fin.auto) S.fin.lanc.push({id:uid(), ts:Date.now(), src:"div", t:"s", v, desc:"Pagamento: "+d.credor, cat:"dividas", d:todayKey(), conta:""});
@@ -1308,10 +1335,16 @@ $("#fc-add").onclick=()=>{ const nome=$("#fc-nome").value.trim(), valor=num($("#
   if(!nome||!valor){ toast("Preencha o nome e o valor da conta."); return; }
   S.fin.contas.push({id:uid(),nome,valor,dia,cat:$("#fc-cat").value||"contas"}); $("#fc-nome").value=$("#fc-valor").value=$("#fc-dia").value=""; save(); renderDinheiro(); toast("Conta adicionada."); };
 $("#fc-auto").onchange=e=>{ S.fin.auto=e.target.checked; save(); };
-function lerDivida(){ const saldo=num($("#fd-valor").value), juros=num($("#fd-juros").value), n=Math.max(1,parseInt($("#fd-n").value)||1), tot=num($("#fd-parc").value);
-  const vParc = tot ? r2(tot/n) : parcelaPrice(saldo,juros,n); return {saldo,juros,n,vParc,total:r2(vParc*n),digitado:!!tot}; }
+/* Com parcelas (n>1) o valor digitado é o de CADA parcela; com 1, é o total */
+function calcDivida(saldo,juros,n,dig){ n=Math.max(1,n||1); const vParc = dig ? (n>1 ? dig : r2(dig)) : parcelaPrice(saldo,juros,n);
+  return {saldo,juros,n,vParc,total:r2(vParc*n),digitado:!!dig}; }
+function aplicarDivida(d,x){ d.saldo=x.saldo; d.juros=x.juros;
+  if(x.n>1){ d.n=x.n; d.vParc=x.vParc; d.parc=x.vParc; } else { delete d.n; delete d.vParc; d.parc=x.total; }
+  d.total=Math.max(0, r2(x.total-(d.pago||0))); }
+function lerDivida(){ return calcDivida(num($("#fd-valor").value), num($("#fd-juros").value), parseInt($("#fd-n").value)||1, num($("#fd-parc").value)); }
 function previaDivida(){ const x=lerDivida(), pv=$("#fd-prev");
-  $("#fd-parc").placeholder = x.saldo&&!x.digitado ? brl(x.total) : "R$ 0";
+  $("#fd-parc-lbl").textContent = x.n>1 ? "Valor de cada parcela" : "Vou pagar, com juros";
+  $("#fd-parc").placeholder = x.saldo&&!x.digitado ? brl(x.n>1?x.vParc:x.total) : "R$ 0";
   if(x.saldo && x.n>1){ pv.hidden=false; pv.textContent=x.n+"x de "+brl(x.vParc)+" = "+brl(x.total)+" ("+brl(x.total-x.saldo)+" de juros)"; } else pv.hidden=true; }
 $("#fd-mes").value=monthKey();
 ["#fd-valor","#fd-juros","#fd-parc","#fd-n"].forEach(s=>{ $(s).addEventListener("input",previaDivida); $(s).addEventListener("change",previaDivida); });
@@ -1319,7 +1352,7 @@ $("#fd-add").onclick=()=>{ const credor=$("#fd-credor").value.trim(), x=lerDivid
   if(!credor||!x.saldo){ toast("Preencha para quem deve e quanto pegou."); return; }
   const d={id:uid(),credor,saldo:x.saldo,juros:x.juros,pago:0,pagMes:{},
     inicio:/^\d{4}-\d{2}$/.test($("#fd-mes").value)?$("#fd-mes").value:monthKey(), dia:Math.min(31,Math.max(1,parseInt($("#fd-dia").value)||10))};
-  if(x.n>1){ d.n=x.n; d.vParc=x.vParc; d.parc=x.vParc; d.total=x.total; } else { d.parc=x.digitado?x.total:0; d.total=totalDivida(d); if(!d.parc) d.parc=d.total; }
+  aplicarDivida(d,x);
   S.fin.dividas.push(d); ["#fd-credor","#fd-valor","#fd-juros","#fd-parc","#fd-n","#fd-dia"].forEach(s=>$(s).value=""); $("#fd-mes").value=monthKey(); previaDivida(); save(); renderDinheiro(); };
 $("#obj-add").onclick=()=>{ const nome=$("#obj-nome").value.trim(), meta=num($("#obj-meta").value);
   if(!nome||!meta){ toast("Dê um nome e um valor ao objetivo."); return; }
