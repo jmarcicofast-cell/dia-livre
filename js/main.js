@@ -119,14 +119,22 @@ async function connect(){
     $("#login-err").textContent = msg + (c ? " ("+c.replace("auth/","")+")" : "");
   };
   getRedirectResult(auth).catch(erroLogin);
+  const atalhoIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && (navigator.standalone || matchMedia("(display-mode: standalone)").matches);
+  let entrando=false;
   $("#login-btn").onclick = async ()=>{
+    if(entrando) return; // um segundo toque cancelava a janela do Google (cancelled-popup-request)
+    entrando=true; const btn=$("#login-btn"), txt=btn.textContent; btn.disabled=true; btn.textContent="Abrindo o Google…";
     $("#login-err").textContent="";
     const p=new GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"});
     try{ await signInWithPopup(auth,p); }
     catch(e){
-      if(/popup-blocked|operation-not-supported/.test(e&&e.code||"")) { try{ await signInWithRedirect(auth,p); }catch(e2){ erroLogin(e2); } }
+      const c=(e&&e.code)||"";
+      if(/popup-blocked|operation-not-supported/.test(c)) { try{ await signInWithRedirect(auth,p); }catch(e2){ erroLogin(e2); } }
+      else if(/cancelled-popup/.test(c)) {}
+      else if(atalhoIOS && /popup-closed/.test(c)) $("#login-err").textContent="No iPhone, o atalho da tela inicial às vezes não recebe a resposta do Google. Toque em Entrar de novo e espere a janela abrir sem tocar outra vez. Se não der, abra o endereço do Dia Livre no Safari e entre por lá: seus dados são os mesmos.";
       else erroLogin(e);
     }
+    finally{ entrando=false; btn.disabled=false; btn.textContent=txt; }
   };
   $("#logout").onclick = async ()=>{ await saving; saveRef=null; try{ localStorage.removeItem("dialivre"); }catch(e){} S=DEF(); aplicarVisual(S.visual); renderAll(); await signOut(auth); };
   onAuthStateChanged(auth, async user=>{
