@@ -1,6 +1,6 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signInWithCredential, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
 import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-ai.js";
@@ -118,6 +118,33 @@ async function connect(){
       : "Não foi possível entrar. Tente de novo.";
     $("#login-err").textContent = msg + (c ? " ("+c.replace("auth/","")+")" : "");
   };
+  // Login direto pelo Google (sem a janela do Firebase). No iPhone, a janela e o redirecionamento do Firebase
+  // perdem a resposta porque o Safari isola o domínio dia-livre.firebaseapp.com. Aqui o Google devolve o
+  // token para o próprio endereço do app (#id_token=...), e o app entra com ele.
+  const VOLTA = location.origin + location.pathname;
+  const ls = { get:k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} }, del:k=>{ try{ localStorage.removeItem(k); }catch(e){} } };
+  async function clientIdGoogle(){
+    const c=ls.get("dl-gcid"); if(c) return c;
+    const r=await fetch("https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key="+encodeURIComponent(firebaseConfig.apiKey),
+      {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({providerId:"google.com",continueUri:"https://"+firebaseConfig.authDomain+"/__/auth/handler"})});
+    const j=await r.json(); const id=j.authUri && new URL(j.authUri).searchParams.get("client_id");
+    if(!id) throw {code:"dl/sem-client-id"}; ls.set("dl-gcid",id); return id;
+  }
+  async function entrarDireto(){
+    const id=await clientIdGoogle();
+    const rnd=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,"0")).join("");
+    const state=rnd(), nonce=rnd(); ls.set("dl-gstate",state);
+    const u=new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    Object.entries({client_id:id,redirect_uri:VOLTA,response_type:"id_token",scope:"openid email profile",nonce,state,prompt:"select_account"}).forEach(([k,v])=>u.searchParams.set(k,v));
+    location.assign(u.toString());
+  }
+  if(/[#&](id_token|error)=/.test(location.hash)){
+    const h=new URLSearchParams(location.hash.slice(1)); history.replaceState(null,"",VOLTA);
+    const esperado=ls.get("dl-gstate"); ls.del("dl-gstate");
+    if(h.get("error")) $("#login-err").textContent = h.get("error")==="access_denied" ? "Login cancelado. Toque em Entrar de novo." : "O Google recusou o login ("+h.get("error")+").";
+    else if(!esperado || h.get("state")!==esperado) $("#login-err").textContent="O login não foi confirmado. Toque em Entrar de novo.";
+    else signInWithCredential(auth, GoogleAuthProvider.credential(h.get("id_token"))).catch(erroLogin);
+  }
   // Só confere o retorno do login por redirecionamento se ele foi mesmo usado. Antes, essa conferência
   // ficava pendente e, ao tocar em Entrar, era cancelada pela janela do Google (cancelled-popup-request).
   let viaRedirect=false; try{ viaRedirect = sessionStorage.getItem("dl-redirect")==="1"; sessionStorage.removeItem("dl-redirect"); }catch(e){}
@@ -131,6 +158,8 @@ async function connect(){
     const p=new GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"});
     // No atalho da tela inicial do iPhone a janela do Google às vezes nunca devolve resposta e o botão ficava
     // preso em "Abrindo o Google…". Depois de 20 s o botão volta e explica o que fazer (se o login chegar depois, entra igual).
+    try{ await entrarDireto(); return; }
+    catch(e){ /* sem o código do Google: tenta a janela do Firebase, como antes */ }
     let espera; const tempo=new Promise((_,rej)=>{ espera=setTimeout(()=>rej({code:"dl/timeout"}),20000); });
     try{ await Promise.race([signInWithPopup(auth,p), tempo]); }
     catch(e){
