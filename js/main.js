@@ -121,7 +121,7 @@ async function connect(){
   // Login direto pelo Google (sem a janela do Firebase). No iPhone, a janela e o redirecionamento do Firebase
   // perdem a resposta porque o Safari isola o domínio dia-livre.firebaseapp.com. Aqui o Google devolve o
   // token para o próprio endereço do app (#id_token=...), e o app entra com ele.
-  const VOLTA = location.origin + location.pathname;
+  const VOLTA = location.origin + location.pathname.replace(/index\.html$/,"").replace(/([^/])$/,"$1/"); // sempre .../dia-livre/
   const ls = { get:k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} }, del:k=>{ try{ localStorage.removeItem(k); }catch(e){} } };
   async function clientIdGoogle(){
     const c=ls.get("dl-gcid"); if(c) return c;
