@@ -687,7 +687,9 @@ function renderOrc(){
     const a=el("div","acts"); const i=el("input","valor"); i.inputMode="decimal"; i.placeholder="Limite por mês (R$)"; i.setAttribute("aria-label","Limite de "+c.n);
     i.value = lim ? fmt(lim) : "";
     const ok=el("button","btn-ghost",lim?"Mudar":"Definir");
-    ok.onclick=()=>{ const v=num(i.value); if(v) S.fin.orc[c.id]=v; else delete S.fin.orc[c.id]; save(); renderOrc(); toast(v?"Limite salvo.":"Limite removido."); };
+    const salvar=()=>{ const v=num(i.value); if(v===(S.fin.orc[c.id]||0)) return false; if(v) S.fin.orc[c.id]=v; else delete S.fin.orc[c.id]; save(); renderOrc(); toast(v?"Limite salvo. Vale para todos os meses.":"Limite removido."); return true; };
+    i.onchange=salvar; i.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); salvar(); } };
+    ok.onclick=()=>{ if(!salvar() && num(i.value)) toast("Limite salvo. Vale para todos os meses."); };
     a.append(i,ok); it.append(a);
     if(c.custom) it.append(delBtn("Apagar categoria", ()=>{ S.fin.cats=S.fin.cats.filter(z=>z.id!==c.id); delete S.fin.orc[c.id]; S.fin.lanc.forEach(l=>{ if(l.cat===c.id) l.cat="outros"; }); save(); renderOrc(); }));
     return it;
@@ -1078,7 +1080,7 @@ function previaCalc(){
 document.addEventListener("focusin",e=>{
   const i=e.target; if(!(i instanceof HTMLInputElement) || !i.classList.contains("valor")) return;
   if(!calcBar) montarCalc();
-  calcAlvo=i; i.insertAdjacentElement("afterend", calcBar); previaCalc();
+  calcAlvo=i; const pai=i.parentElement; (pai && pai.classList.contains("acts") ? pai : i).insertAdjacentElement("afterend", calcBar); previaCalc();
 });
 document.addEventListener("focusout",e=>{
   if(e.target!==calcAlvo) return;
