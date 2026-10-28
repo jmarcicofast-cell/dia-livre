@@ -1275,11 +1275,14 @@ $("#fc-add").onclick=()=>{ const nome=$("#fc-nome").value.trim(), valor=num($("#
   if(!nome||!valor){ toast("Preencha o nome e o valor da conta."); return; }
   S.fin.contas.push({id:uid(),nome,valor,dia,cat:$("#fc-cat").value||"contas"}); $("#fc-nome").value=$("#fc-valor").value=$("#fc-dia").value=""; save(); renderDinheiro(); toast("Conta adicionada."); };
 $("#fc-auto").onchange=e=>{ S.fin.auto=e.target.checked; save(); };
+function previaDivida(){ const saldo=num($("#fd-valor").value), juros=num($("#fd-juros").value);
+  $("#fd-parc").placeholder = saldo ? brl(totalDivida({saldo,juros})) : "R$ 0"; }
+["#fd-valor","#fd-juros"].forEach(s=>{ $(s).addEventListener("input",previaDivida); $(s).addEventListener("change",previaDivida); });
 $("#fd-add").onclick=()=>{ const credor=$("#fd-credor").value.trim(), saldo=num($("#fd-valor").value), juros=num($("#fd-juros").value);
   let parc=num($("#fd-parc").value);
   if(!credor||!saldo){ toast("Preencha para quem deve e quanto pegou."); return; }
   const d={id:uid(),credor,saldo,juros,parc,pago:0}; d.total=totalDivida(d); if(!parc) d.parc=d.total;
-  S.fin.dividas.push(d); ["#fd-credor","#fd-valor","#fd-juros","#fd-parc"].forEach(s=>$(s).value=""); save(); renderDinheiro(); };
+  S.fin.dividas.push(d); ["#fd-credor","#fd-valor","#fd-juros","#fd-parc"].forEach(s=>$(s).value=""); previaDivida(); save(); renderDinheiro(); };
 $("#obj-add").onclick=()=>{ const nome=$("#obj-nome").value.trim(), meta=num($("#obj-meta").value);
   if(!nome||!meta){ toast("Dê um nome e um valor ao objetivo."); return; }
   S.objetivos.push({id:uid(),nome,meta,guardado:0}); $("#obj-nome").value=$("#obj-meta").value=""; save(); renderDinheiro(); toast("Objetivo criado."); };
