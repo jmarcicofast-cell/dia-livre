@@ -307,9 +307,10 @@
 
     <!-- Rascunho: o que cada entrada vai pagar -->
     <div id="s-rasc" class="stack" data-subview hidden>
+      <div class="mes-sel"><button class="icon-btn" data-mes="-1" aria-label="Mês anterior"><i data-ic="esq"></i></button><b class="mes-nome"></b><button class="icon-btn" data-mes="1" aria-label="Próximo mês"><i data-ic="dir"></i></button></div>
       <div class="card">
         <h2>Rascunho de pagamentos</h2>
-        <p class="muted small">Cadastre o que vai entrar e escolha o que cada entrada paga. É só um rascunho: nada é marcado como pago aqui.</p>
+        <p class="muted small">Escolha o mês nas setas, cadastre o que vai entrar e escolha o que cada entrada paga. É só um rascunho: nada é marcado como pago aqui.</p>
         <dl class="kv kv2" id="ra-tot"><div><dt>Vai entrar</dt><dd id="ra-ent">R$ 0</dd></div><div><dt id="ra-sob-l">Sobra no fim</dt><dd id="ra-sob">R$ 0</dd></div></dl>
         <p class="small" id="ra-dica"></p>
         <div class="row">
@@ -533,7 +534,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=26"></script>
+<script type="module" src="js/main.js?v=27"></script>
 
 </body>
 </html>

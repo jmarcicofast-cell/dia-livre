@@ -948,19 +948,20 @@ function renderAgenda(){
 const dm = k => k.slice(8)+"/"+k.slice(5,7);
 const chaveIt = it => it.tipo==="x" ? "x|"+it.ref.id : it.tipo+"|"+it.ref.id+"|"+it.d.slice(0,7);
 let raAtrasadas=false;
-function entradasOrd(){ return [...S.fin.rasc.entradas].sort((a,b)=>a.d.localeCompare(b.d)); }
-/* Contas do mês atual até o mês da última entrada, mais os avulsos */
-function itensRasc(){
-  const R=S.fin.rasc, ents=entradasOrd();
-  let fim=monthKey(); ents.forEach(e=>{ if(e.d.slice(0,7)>fim) fim=e.d.slice(0,7); });
-  const out=[];
+/* O rascunho é por mês (curMes, o mesmo seletor das outras abas de Dinheiro).
+   Avulsos guardam o mês em x.mes; os antigos sem mês usam o da data ou o mês atual. */
+const mesX = x => x.mes || (x.d ? x.d.slice(0,7) : (x.mes=monthKey()));
+function entradasOrd(mk=curMes){ return S.fin.rasc.entradas.filter(e=>e.d.slice(0,7)===mk).sort((a,b)=>a.d.localeCompare(b.d)); }
+/* Contas, faturas e parcelas do mês escolhido, mais os avulsos desse mês */
+function itensRasc(mk=curMes){
+  const R=S.fin.rasc, out=[], ehAtual = mk===monthKey();
   const puxados=new Set(R.extras.map(x=>x.ref).filter(Boolean));
-  for(let mk=monthKey(); mk<=fim; mk=addMes(mk,1))
-    itensDoMes(mk).forEach(it=>{ const k=chaveIt(it); if(puxados.has(k)) return; if(R.aloc[k] || (!it.pg && (raAtrasadas || !it.atr))) out.push(it); });
-  R.extras.forEach(x=>out.push({tipo:"x", ref:x, d:x.d||"", nome:x.nome, v:x.v, pg:false}));
+  itensDoMes(mk).forEach(it=>{ const k=chaveIt(it); if(puxados.has(k)) return; if(R.aloc[k] || (!it.pg && (!ehAtual || raAtrasadas || !it.atr))) out.push(it); });
+  R.extras.filter(x=>mesX(x)===mk).forEach(x=>out.push({tipo:"x", ref:x, d:x.d||"", nome:x.nome, v:x.v, pg:false}));
   return out;
 }
-function entradaDe(it){ const id=S.fin.rasc.aloc[chaveIt(it)]; return id && S.fin.rasc.entradas.some(e=>e.id===id) ? id : ""; }
+function entradaDe(it){ const id=S.fin.rasc.aloc[chaveIt(it)]; return id && entradasOrd().some(e=>e.id===id) ? id : ""; }
+function avisoMes(mk, txt){ if(mk!==curMes) toast(txt+" Foi para o rascunho de "+nomeMes(mk,false)+"."); else toast(txt); }
 function linhaRasc(it, ents){
   const r=el("div","ra-it"+(it.pg?" pg":""));
   const nm=el("div","nm",it.nome); const eid=entradaDe(it); const e=ents.find(x=>x.id===eid);
@@ -998,7 +999,7 @@ function renderRasc(){
     const [l1,i1]=campo("Dia",e.d,{type:"date"}); const [l2,i2]=campo("Valor (R$)",fmt(e.v),{valor:true,mode:"decimal"}); lin.append(l1,l2);
     const [l3,i3]=campo("Nome",e.nome||""); l3.style.marginTop="8px";
     const acts=el("div","row"); acts.style.marginTop="8px";
-    const ok=el("button","btn-soft","Salvar"); ok.onclick=()=>{ const v=num(i2.value); if(!i1.value||!v){ toast("Preencha o dia e o valor."); return; } e.d=i1.value; e.v=v; e.nome=i3.value.trim(); save(); renderRasc(); toast("Entrada atualizada."); };
+    const ok=el("button","btn-soft","Salvar"); ok.onclick=()=>{ const v=num(i2.value); if(!i1.value||!v){ toast("Preencha o dia e o valor."); return; } e.d=i1.value; e.v=v; e.nome=i3.value.trim(); save(); renderRasc(); avisoMes(e.d.slice(0,7),"Entrada atualizada."); };
     const del=el("button","btn-link","Apagar entrada"); del.onclick=()=>{ if(!confirm("Apagar a entrada "+(e.nome||dm(e.d))+"? O que ela pagava volta para \"Sem entrada\".")) return;
       R.entradas=R.entradas.filter(z=>z.id!==e.id); Object.keys(R.aloc).forEach(k=>{ if(R.aloc[k]===e.id) delete R.aloc[k]; }); save(); renderRasc(); };
     acts.append(ok, del); ed.append(lin, l3, acts); c.append(ed);
@@ -1010,15 +1011,16 @@ function renderRasc(){
   const sb=$("#ra-sem"); sb.textContent=""; sem.forEach(it=>sb.append(linhaRasc(it,ents)));
   const sobra=r2(totEnt-totAloc);
   $("#ra-ent").textContent=brl(totEnt); $("#ra-sob").textContent=brl(Math.abs(sobra));
-  const atr=[]; if(!raAtrasadas) itensDoMes(monthKey()).forEach(it=>{ if(it.atr && !S.fin.rasc.aloc[chaveIt(it)]) atr.push(it); });
-  const ab=$("#ra-atr"); ab.hidden=!atr.length && !raAtrasadas;
+  const atr=[]; if(!raAtrasadas && curMes===monthKey()) itensDoMes(monthKey()).forEach(it=>{ if(it.atr && !S.fin.rasc.aloc[chaveIt(it)]) atr.push(it); });
+  const ab=$("#ra-atr"); ab.hidden=curMes!==monthKey() || (!atr.length && !raAtrasadas);
   ab.textContent = raAtrasadas ? "Esconder as contas com vencimento já passado" : (atr.length===1?"1 conta de "+nomeMes(monthKey(),false)+" já venceu e não foi marcada como paga. Mostrar":atr.length+" contas de "+nomeMes(monthKey(),false)+" já venceram e não foram marcadas como pagas. Mostrar");
   $("#ra-sob").parentElement.classList.toggle("neg", sobra<0); $("#ra-sob-l").textContent = sobra<0 ? "Falta" : "Sobra no fim";
-  $("#ra-dica").textContent = !ents.length ? "Comece adicionando suas entradas aqui embaixo, com dia e valor."
+  $("#ra-dica").textContent = !ents.length ? "Nenhuma entrada em "+nomeMes(curMes,false)+". Adicione aqui embaixo, com dia e valor."
     : semTot ? brl(semTot)+" em contas ainda sem entrada"+(sobra-semTot<0?": se tudo for pago, faltam "+brl(semTot-sobra)+".":".")
     : sobra<0 ? "As entradas não cobrem tudo o que foi escolhido. Veja o que dá para mudar de data ou negociar." : "Tudo tem de onde sair.";
-  $("#ra-auto").disabled=!ents.length||!sem.length; $("#ra-limpar").hidden=!ents.length&&!R.extras.length;
-  if(!$("#ra-e-data").value) $("#ra-e-data").value=todayKey();
+  $("#ra-auto").disabled=!ents.length||!sem.length; $("#ra-limpar").hidden=!ents.length&&!itens.some(it=>it.tipo==="x");
+  const ed0=$("#ra-e-data"); if(!ed0.value || ed0.dataset.mes!==curMes){ ed0.value = curMes===monthKey() ? todayKey() : curMes+"-01"; ed0.dataset.mes=curMes; }
+  $("#ra-x-data").min=curMes+"-01"; $("#ra-x-data").max=curMes+"-"+pad(diasNoMes(curMes));
   renderPuxar();
 }
 function distribuirRasc(){
@@ -1032,19 +1034,18 @@ function distribuirRasc(){
 /* Escolher do que já está cadastrado: dívidas, contas e gastos lançados */
 let raPTipo="divida";
 function opcoesPuxar(t){
-  const hoje=todayKey(), mk0=monthKey(), out=[];
+  const hoje=todayKey(), mk0=curMes, out=[];
   if(t==="divida") S.fin.dividas.filter(d=>falta(d)>0).forEach(d=>{
     const n=d.n>1?d.n:1; let d1="", v=n>1?Math.min(d.vParc,falta(d)):falta(d), parc="";
     if(d.inicio) for(let mk=d.inicio<mk0?mk0:d.inicio, i=0; i<60; mk=addMes(mk,1), i++){ const k=parcelaNoMes(d,mk); if(!k) { if(mk>d.inicio) break; continue; }
       if(!(d.pagMes||{})[mk]){ d1=diaEm(mk,(d.diaMes||{})[mk]||d.dia); if(n>1) parc=" · parcela "+k+"/"+n; break; } }
     out.push({id:d.id, rot:d.credor+" · "+brl(v)+parc+" (falta "+brl(falta(d))+")", nome:d.credor+(parc?" ("+parc.slice(11)+")":""), v, d:d1}); });
   if(t==="conta"){
-    S.fin.contas.forEach(c=>{ let mk=mk0; if(c.dia && ((S.fin.pagos[mk]||{})[c.id] || diaEm(mk,c.dia)<hoje)) mk=addMes(mk,1);
+    S.fin.contas.forEach(c=>{ const mk=mk0;
       const d1=c.dia?diaEm(mk,c.dia):""; out.push({id:c.id, sub:"conta", rot:c.nome+" · "+brl(c.valor)+(c.dia?" · dia "+c.dia:""), nome:c.nome, v:c.valor, d:d1}); });
-    S.fin.cartoes.forEach(c=>{ for(let i=0,mk=mk0;i<3;i++,mk=addMes(mk,1)){ const v=fatura(c,mk); if(v>0 && !faturaPaga(c,mk)){
-      out.push({id:c.id, sub:"fatura", rot:"Fatura "+c.nome+" · "+brl(v)+" · "+nomeMes(mk,false), nome:"Fatura "+c.nome, v, d:diaEm(mk,c.vence)}); break; } } });
+    S.fin.cartoes.forEach(c=>{ const mk=mk0, v=fatura(c,mk); if(v>0) out.push({id:c.id, sub:"fatura", rot:"Fatura "+c.nome+" · "+brl(v)+(faturaPaga(c,mk)?" · já paga":""), nome:"Fatura "+c.nome, v, d:diaEm(mk,c.vence)}); });
   }
-  if(t==="gasto"){ const vistos=new Map(), lim=addMes(mk0,-3)+"-01";
+  if(t==="gasto"){ const vistos=new Map(), lim=addMes(monthKey(),-3)+"-01";
     [...S.fin.lanc].filter(l=>l.t==="s" && l.src!=="conta" && l.src!=="div" && (l.d||"")>=lim).sort((a,b)=>(b.d||"").localeCompare(a.d||""))
       .forEach(l=>{ const k=normDesc(l.desc)||("cat:"+l.cat); if(vistos.has(k)) { vistos.get(k).vezes++; return; }
         vistos.set(k,{id:l.id, nome:l.desc||cat(l.cat).n, v:l.v, d:"", ult:l.d, vezes:1}); });
@@ -1071,9 +1072,10 @@ function addPuxar(){
   const ref = tipo!=="gasto" && d ? tipo+"|"+o.id+"|"+d.slice(0,7) : "";
   const R=S.fin.rasc;
   if(ref && R.extras.some(x=>x.ref===ref)){ toast("Isso já está no rascunho."); return; }
-  const x={id:uid(), nome:o.nome, v, d, de:tipo, ref};
+  const mes = d ? d.slice(0,7) : curMes;
+  const x={id:uid(), nome:o.nome, v, d, de:tipo, ref, mes};
   if(ref && R.aloc[ref]){ R.aloc["x|"+x.id]=R.aloc[ref]; delete R.aloc[ref]; }
-  R.extras.push(x); save(); renderRasc(); toast(o.nome+" foi para o rascunho.");
+  R.extras.push(x); save(); renderRasc(); avisoMes(mes, o.nome+" foi para o rascunho.");
 }
 
 /* ---------- Dívidas e objetivos ---------- */
@@ -1624,13 +1626,18 @@ $$("#ra-p-tipo button").forEach(b=>b.onclick=()=>{ raPTipo=b.dataset.t; renderPu
 $("#ra-p-item").onchange=preencherPuxar;
 $("#ra-p-add").onclick=addPuxar;
 $("#ra-atr").onclick=()=>{ raAtrasadas=!raAtrasadas; renderRasc(); };
-$("#ra-limpar").onclick=()=>{ if(!confirm("Apagar todas as entradas, avulsos e escolhas do rascunho?")) return; S.fin.rasc={entradas:[], aloc:{}, extras:[]}; save(); renderRasc(); };
+$("#ra-limpar").onclick=()=>{ const mk=curMes, R=S.fin.rasc; if(!confirm("Apagar as entradas, avulsos e escolhas do rascunho de "+nomeMes(mk,false)+"?")) return;
+  const ents=new Set(entradasOrd(mk).map(e=>e.id)), xs=new Set(R.extras.filter(x=>mesX(x)===mk).map(x=>x.id));
+  R.entradas=R.entradas.filter(e=>!ents.has(e.id)); R.extras=R.extras.filter(x=>!xs.has(x.id));
+  Object.keys(R.aloc).forEach(k=>{ if(ents.has(R.aloc[k]) || xs.has(k.slice(2)) || k.endsWith("|"+mk)) delete R.aloc[k]; });
+  save(); renderRasc(); };
 $("#ra-e-add").onclick=()=>{ const d=$("#ra-e-data").value, v=num($("#ra-e-valor").value), nome=$("#ra-e-nome").value.trim();
   if(!d||!v){ toast("Preencha o dia e o valor da entrada."); return; }
-  S.fin.rasc.entradas.push({id:uid(), d, v, nome}); $("#ra-e-valor").value=$("#ra-e-nome").value=""; save(); renderRasc(); toast("Entrada adicionada."); };
+  S.fin.rasc.entradas.push({id:uid(), d, v, nome}); $("#ra-e-valor").value=$("#ra-e-nome").value=""; save(); renderRasc(); avisoMes(d.slice(0,7),"Entrada adicionada."); };
 $("#ra-x-add").onclick=()=>{ const nome=$("#ra-x-nome").value.trim(), v=num($("#ra-x-valor").value), d=$("#ra-x-data").value;
   if(!nome||!v){ toast("Preencha o que é e o valor."); return; }
-  S.fin.rasc.extras.push({id:uid(), nome, v, d}); $("#ra-x-nome").value=$("#ra-x-valor").value=$("#ra-x-data").value=""; save(); renderRasc(); toast("Pagamento adicionado."); };
+  const mes = d ? d.slice(0,7) : curMes;
+  S.fin.rasc.extras.push({id:uid(), nome, v, d, mes}); $("#ra-x-nome").value=$("#ra-x-valor").value=$("#ra-x-data").value=""; save(); renderRasc(); avisoMes(mes,"Pagamento adicionado."); };
 /* Com parcelas (n>1) o valor digitado é o de CADA parcela; com 1, é o total */
 function calcDivida(saldo,juros,n,dig){ n=Math.max(1,n||1); const vParc = dig ? (n>1 ? dig : r2(dig)) : parcelaPrice(saldo,juros,n);
   return {saldo,juros,n,vParc,total:r2(vParc*n),digitado:!!dig}; }
