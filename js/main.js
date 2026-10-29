@@ -83,7 +83,7 @@ function geminiSample(model){
     const contents=[];
     turns.forEach(t=>{ const role=t.role==="assistant"?"model":"user"; const last=contents[contents.length-1];
       if(last && last.role===role) last.parts[0].text += "\n\n"+t.content; else contents.push({role, parts:[{text:t.content}]}); });
-    let text="";
+    let text="", avisoSrv="";
     // Primeiro tenta a IA pelo servidor da Cloudflare (chave do AI Studio). Se ele ainda não tiver a chave,
     // usa o Firebase AI Logic, como antes.
     const srv=(PLUGGY_WORKER_URL||"").trim().replace(/\/+$/,"");
@@ -93,6 +93,7 @@ function geminiSample(model){
       catch(e){ if(opts.signal && opts.signal.aborted) throw {code:"cancelled"}; r=null; }
       if(r && r.ok && j.text && j.text.trim()){ opts.onText && opts.onText({text:j.text, delta:j.text}); return {text:j.text, truncated:false}; }
       if(r && r.status===429) throw {code:"rate_limited", message:j.erro||""};
+      if(r && j.erro) avisoSrv=j.erro;
       if(r && j.erro && !/Falta configurar GEMINI_API_KEY|Rota não encontrada/.test(j.erro)) throw {code:"upstream_error", message:"Servidor: "+j.erro+(r.status===401?await (async()=>{ let x=""; try{ const t=await auth.currentUser.getIdToken(); const pl=JSON.parse(decodeURIComponent(escape(atob(t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/"))))); x=" [projeto: "+pl.aud+", verificado: "+(pl.email_verified?"sim":"não")+", login: "+((pl.firebase&&pl.firebase.sign_in_provider)||"?")+", token: "+t.length+"]"; }catch(_){ x=" [não li o token]"; } return " (Você está no app com: "+(auth.currentUser.email||"e-mail desconhecido")+")"+x; })():"")};
     }
     try{
@@ -104,6 +105,7 @@ function geminiSample(model){
     }catch(e){
       if(e && e.code==="cancelled") throw e;
       const m=String(e&&e.message||e);
+      if(avisoSrv) throw {code:"upstream_error", message:"Servidor: "+avisoSrv+(/GEMINI_API_KEY/.test(avisoSrv)?" Coloque a chave do Google AI Studio na Cloudflare (Variáveis e segredos → GEMINI_API_KEY, tipo Segredo) e toque em Implantar.":/Rota não encontrada/.test(avisoSrv)?" O código do Worker na Cloudflare está desatualizado: cole a versão nova de worker/dia-livre-banco.js e implante.":""), text:text||undefined};
       throw {code: /429|quota|RESOURCE_EXHAUSTED/i.test(m) ? "rate_limited" : /permission|403|app.?check|api.*not.*enabled/i.test(m) ? "not_granted" : "upstream_error", message:m, text:text||undefined};
     }
     if(!text.trim()) throw {code:"empty_completion"};
