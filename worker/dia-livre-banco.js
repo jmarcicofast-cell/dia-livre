@@ -48,8 +48,16 @@ export default {
         let ultimo = null;
         for (let i = 0; i < fila.length; i++) {
           if (i > 0) await new Promise(ok => setTimeout(ok, 800 * i));
-          const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + fila[i] + ":generateContent",
-            { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY }, body: JSON.stringify({ contents }) });
+          // Cada tentativa tem limite de 40s: se o modelo demorar demais (erro 524), passa logo para o próximo.
+          let r;
+          try {
+            r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + fila[i] + ":generateContent",
+              { method: "POST", signal: AbortSignal.timeout(40000), headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY }, body: JSON.stringify({ contents }) });
+          } catch (e) {
+            ultimo = { status: 524, msg: "a IA demorou demais para responder" };
+            while (i + 1 < fila.length && fila[i + 1] === fila[i]) i++; // não repete o mesmo modelo lento
+            continue;
+          }
           const j = await r.json().catch(() => ({}));
           if (r.ok) {
             const text = ((j.candidates || [])[0]?.content?.parts || []).map(p => p.text || "").join("");
@@ -57,10 +65,12 @@ export default {
           }
           ultimo = { status: r.status, msg: (j.error && j.error.message) || "erro" };
           // Só vale tentar outro modelo se for sobrecarga ou modelo inexistente; erro de chave, por exemplo, não melhora.
-          if (![429, 500, 503, 404].includes(r.status)) break;
+          // Qualquer erro 5xx (inclui 524 = demorou demais) também passa para o próximo modelo.
+          if (!(r.status >= 500 || [429, 404].includes(r.status))) break;
+          if (r.status === 524 || r.status === 504) while (i + 1 < fila.length && fila[i + 1] === fila[i]) i++;
         }
-        const ocupado = ultimo && [429, 500, 503].includes(ultimo.status);
-        return resp({ erro: ocupado ? "A IA do Google está sobrecarregada agora. Tente de novo em alguns minutos."
+        const ocupado = ultimo && (ultimo.status === 429 || ultimo.status >= 500);
+        return resp({ erro: ocupado ? "A IA do Google está sobrecarregada ou lenta agora. Tente de novo em alguns minutos."
           : "Gemini " + ultimo.status + ": " + ultimo.msg }, ultimo && ultimo.status === 429 ? 429 : 502);
       }
 
