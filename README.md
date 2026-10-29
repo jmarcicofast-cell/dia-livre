@@ -5,7 +5,7 @@ App de apoio para quem quer parar de pegar dinheiro com agiota por impulso. Um d
 - **Hoje**: contador de dias livres, check-in diário, calendário, conquistas e incentivo da IA
 - **Gatilhos**: registro de cada vontade e os padrões que mais se repetem
 - **SOS**: 15 minutos de espera com respiração guiada, motivos, carta e pessoa de confiança (opcional)
-- **Dinheiro**: resumo do mês com gráficos, lançamentos com categorias, orçamento por categoria, cartões com faturas e parcelas, calendário de contas, dívidas com juros, objetivos, plano do mês com IA e conexão com o banco pelo Meu Pluggy
+- **Dinheiro**: resumo do mês com gráficos, lançamentos com categorias, orçamento por categoria, cartões com faturas e parcelas, calendário de contas, rascunho de pagamentos por entrada (o que cada recebimento vai pagar), dívidas com juros, objetivos, plano do mês com IA e conexão com o banco pelo Meu Pluggy
 - **Aparência**: botão da paleta no topo. Temas prontos, cor principal, cor de destaque, fonte, tamanho da letra, cantos e modo claro/escuro
 - **Calculadora**: todo campo de valor aceita conta, como `30+15,90` ou `600/6`
 - **Conversa**: apoio com IA na hora da vontade

@@ -35,7 +35,7 @@ const BARR = [
   ["dividas","Listei o que ainda devo e para quem"]
 ];
 const MILES = [1,3,7,14,21,30,60,90,180,365];
-const FIN_DEF = () => ({renda:0, contas:[], pagos:{}, dividas:[], lanc:[], orc:{}, cats:[], cartoes:[], fatPagas:{}, auto:true,
+const FIN_DEF = () => ({renda:0, contas:[], pagos:{}, dividas:[], lanc:[], orc:{}, cats:[], cartoes:[], fatPagas:{}, auto:true, rasc:{entradas:[], aloc:{}, extras:[]},
   banco:{url:"", items:[], contas:[], ult:0, regras:{}, desde:"", apagados:[], erro:""}});
 const DEF = () => ({
   v:1, inicio: todayKey(), recorde:0, dias:{}, vontades:[],
@@ -56,6 +56,7 @@ function merge(o){
   const d = DEF(); const r = Object.assign(d, o||{});
   r.fin = Object.assign(FIN_DEF(), (o&&o.fin)||{});
   r.fin.banco = Object.assign(FIN_DEF().banco, (o&&o.fin&&o.fin.banco)||{});
+  r.fin.rasc = Object.assign({entradas:[], aloc:{}, extras:[]}, (o&&o.fin&&o.fin.rasc)||{});
   r.visual = Object.assign(VISUAL_PADRAO(), (o&&o.visual)||{});
   r.contato = Object.assign({nome:"",tel:""}, r.contato||{});
   if(!(r.v>=2)){ // versão 2: dívidas guardam quanto falta pagar já com juros
@@ -550,6 +551,7 @@ function renderDinheiro(){
   else if(sub==="orc") renderOrc();
   else if(sub==="cartoes") renderCartoes();
   else if(sub==="agenda") renderAgenda();
+  else if(sub==="rasc") renderRasc();
   else if(sub==="dividas") renderDividas();
   else if(sub==="banco") renderBanco();
 }
@@ -937,6 +939,91 @@ function renderAgenda(){
   const fc=$("#f-contas"); fc.textContent=""; itens.forEach(it=>fc.append(linhaItem(it,mk)));
   const sc=$("#fc-cat"); if(sc.dataset.n!=String(todasCats().length)){ sc.textContent=""; catsDoTipo("s").filter(c=>c.t==="s").forEach(c=>sc.append(new Option(c.n,c.id))); sc.value="contas"; sc.dataset.n=todasCats().length; }
   $("#fc-auto").checked=!!S.fin.auto;
+}
+
+
+/* ---------- Rascunho: o que cada entrada vai pagar ---------- */
+/* S.fin.rasc = { entradas:[{id,nome,d,v}], aloc:{chave:idEntrada}, extras:[{id,nome,v,d}] }
+   chave = "conta|id|2026-11", "fatura|id|mk", "divida|id|mk" ou "x|id" (avulso) */
+const dm = k => k.slice(8)+"/"+k.slice(5,7);
+const chaveIt = it => it.tipo==="x" ? "x|"+it.ref.id : it.tipo+"|"+it.ref.id+"|"+it.d.slice(0,7);
+let raAtrasadas=false;
+function entradasOrd(){ return [...S.fin.rasc.entradas].sort((a,b)=>a.d.localeCompare(b.d)); }
+/* Contas do mês atual até o mês da última entrada, mais os avulsos */
+function itensRasc(){
+  const R=S.fin.rasc, ents=entradasOrd();
+  let fim=monthKey(); ents.forEach(e=>{ if(e.d.slice(0,7)>fim) fim=e.d.slice(0,7); });
+  const out=[];
+  for(let mk=monthKey(); mk<=fim; mk=addMes(mk,1))
+    itensDoMes(mk).forEach(it=>{ const k=chaveIt(it); if(R.aloc[k] || (!it.pg && (raAtrasadas || !it.atr))) out.push(it); });
+  R.extras.forEach(x=>out.push({tipo:"x", ref:x, d:x.d||"", nome:x.nome, v:x.v, pg:false}));
+  return out;
+}
+function entradaDe(it){ const id=S.fin.rasc.aloc[chaveIt(it)]; return id && S.fin.rasc.entradas.some(e=>e.id===id) ? id : ""; }
+function linhaRasc(it, ents){
+  const r=el("div","ra-it"+(it.pg?" pg":""));
+  const nm=el("div","nm",it.nome); const eid=entradaDe(it); const e=ents.find(x=>x.id===eid);
+  const info=[]; if(it.pg) info.push("já paga"); if(it.d) info.push("vence "+dm(it.d));
+  info.push(it.tipo==="conta"?"Conta":it.tipo==="fatura"?"Cartão":it.tipo==="divida"?"Dívida":"Avulso");
+  nm.append(el("small",null,info.join(" · ")));
+  if(e && it.d && it.d<e.d && !it.pg) nm.append(el("small","av","Vence antes dessa entrada chegar"));
+  r.append(nm, el("span","vl",brl(it.v)));
+  const op=el("div","op"); const sl=el("select"); sl.setAttribute("aria-label","Pagar "+it.nome+" com");
+  sl.append(new Option("Pagar com: escolher entrada",""));
+  ents.forEach(x=>sl.append(new Option("Pagar com: "+(x.nome||"Entrada de "+dm(x.d))+(x.nome?" ("+dm(x.d)+")":""), x.id)));
+  sl.value=eid;
+  sl.onchange=()=>{ const k=chaveIt(it); if(sl.value) S.fin.rasc.aloc[k]=sl.value; else delete S.fin.rasc.aloc[k]; save(); renderRasc(); };
+  op.append(sl);
+  if(it.tipo==="x"){ const x=el("button","x","✕"); x.setAttribute("aria-label","Remover "+it.nome);
+    x.onclick=()=>{ S.fin.rasc.extras=S.fin.rasc.extras.filter(z=>z.id!==it.ref.id); delete S.fin.rasc.aloc["x|"+it.ref.id]; save(); renderRasc(); }; op.append(x); }
+  r.append(op); return r;
+}
+function renderRasc(){
+  const R=S.fin.rasc, ents=entradasOrd(), itens=itensRasc();
+  const box=$("#ra-entradas"); box.textContent="";
+  let totEnt=0, totAloc=0;
+  ents.forEach(e=>{
+    const meus=itens.filter(it=>entradaDe(it)===e.id).sort((a,b)=>(a.d||"9").localeCompare(b.d||"9"));
+    const sai=meus.reduce((a,x)=>a+x.v,0), sobra=r2(e.v-sai); totEnt+=e.v; totAloc+=sai;
+    const c=el("div","card ra-ent");
+    const cab=el("div","cab"); const t=el("div"); t.append(el("h2",null,e.nome||"Entrada de "+dm(e.d))); t.append(el("small",null,"Dia "+dm(e.d)+" · "+SEMANA[parseKey(e.d).getDay()]));
+    cab.append(t, el("span","val",brl(e.v))); c.append(cab);
+    c.append(barra(e.v? sai/e.v*100 : (sai?100:0), sobra<0?"over":sai>e.v*0.9?"warn":""));
+    const lista=el("div"); if(!meus.length) lista.append(el("p","small muted","Nada escolhido para esta entrada ainda.")); meus.forEach(it=>lista.append(linhaRasc(it,ents))); c.append(lista);
+    const res=el("div","ra-res "+(sobra<0?"neg":"pos")); res.append(el("span",null,"Sai "+brl(sai)+" · "+(sobra<0?"faltam":"sobram")), el("b",null,brl(Math.abs(sobra)))); c.append(res);
+    const ed=el("details"); ed.append(el("summary","small muted","Editar entrada"));
+    const lin=el("div","row"); lin.style.flexWrap="nowrap"; lin.style.marginTop="8px";
+    const [l1,i1]=campo("Dia",e.d,{type:"date"}); const [l2,i2]=campo("Valor (R$)",fmt(e.v),{valor:true,mode:"decimal"}); lin.append(l1,l2);
+    const [l3,i3]=campo("Nome",e.nome||""); l3.style.marginTop="8px";
+    const acts=el("div","row"); acts.style.marginTop="8px";
+    const ok=el("button","btn-soft","Salvar"); ok.onclick=()=>{ const v=num(i2.value); if(!i1.value||!v){ toast("Preencha o dia e o valor."); return; } e.d=i1.value; e.v=v; e.nome=i3.value.trim(); save(); renderRasc(); toast("Entrada atualizada."); };
+    const del=el("button","btn-link","Apagar entrada"); del.onclick=()=>{ if(!confirm("Apagar a entrada "+(e.nome||dm(e.d))+"? O que ela pagava volta para \"Sem entrada\".")) return;
+      R.entradas=R.entradas.filter(z=>z.id!==e.id); Object.keys(R.aloc).forEach(k=>{ if(R.aloc[k]===e.id) delete R.aloc[k]; }); save(); renderRasc(); };
+    acts.append(ok, del); ed.append(lin, l3, acts); c.append(ed);
+    box.append(c);
+  });
+  const sem=itens.filter(it=>!it.pg && !entradaDe(it));
+  const semTot=sem.reduce((a,x)=>a+x.v,0);
+  $("#ra-sem-card").hidden=!sem.length; $("#ra-sem-tot").textContent=brl(semTot);
+  const sb=$("#ra-sem"); sb.textContent=""; sem.forEach(it=>sb.append(linhaRasc(it,ents)));
+  const sobra=r2(totEnt-totAloc);
+  $("#ra-ent").textContent=brl(totEnt); $("#ra-sob").textContent=brl(Math.abs(sobra));
+  const atr=[]; if(!raAtrasadas) itensDoMes(monthKey()).forEach(it=>{ if(it.atr && !S.fin.rasc.aloc[chaveIt(it)]) atr.push(it); });
+  const ab=$("#ra-atr"); ab.hidden=!atr.length && !raAtrasadas;
+  ab.textContent = raAtrasadas ? "Esconder as contas com vencimento já passado" : (atr.length===1?"1 conta de "+nomeMes(monthKey(),false)+" já venceu e não foi marcada como paga. Mostrar":atr.length+" contas de "+nomeMes(monthKey(),false)+" já venceram e não foram marcadas como pagas. Mostrar");
+  $("#ra-sob").parentElement.classList.toggle("neg", sobra<0); $("#ra-sob-l").textContent = sobra<0 ? "Falta" : "Sobra no fim";
+  $("#ra-dica").textContent = !ents.length ? "Comece adicionando suas entradas aqui embaixo, com dia e valor."
+    : semTot ? brl(semTot)+" em contas ainda sem entrada"+(sobra-semTot<0?": se tudo for pago, faltam "+brl(semTot-sobra)+".":".")
+    : sobra<0 ? "As entradas não cobrem tudo o que foi escolhido. Veja o que dá para mudar de data ou negociar." : "Tudo tem de onde sair.";
+  $("#ra-auto").disabled=!ents.length||!sem.length; $("#ra-limpar").hidden=!ents.length&&!R.extras.length;
+  if(!$("#ra-e-data").value) $("#ra-e-data").value=todayKey();
+}
+function distribuirRasc(){
+  const ents=entradasOrd(); if(!ents.length) return; let n=0;
+  itensRasc().forEach(it=>{ if(it.pg || entradaDe(it)) return;
+    const antes=it.d ? ents.filter(e=>e.d<=it.d) : []; const e = antes.length ? antes[antes.length-1] : ents[0];
+    S.fin.rasc.aloc[chaveIt(it)]=e.id; n++; });
+  save(); renderRasc(); toast(n+(n===1?" conta distribuída.":" contas distribuídas."));
 }
 
 /* ---------- Dívidas e objetivos ---------- */
@@ -1482,6 +1569,15 @@ $("#fc-add").onclick=()=>{ const nome=$("#fc-nome").value.trim(), valor=num($("#
   if(!nome||!valor){ toast("Preencha o nome e o valor da conta."); return; }
   S.fin.contas.push({id:uid(),nome,valor,dia,cat:$("#fc-cat").value||"contas"}); $("#fc-nome").value=$("#fc-valor").value=$("#fc-dia").value=""; save(); renderDinheiro(); toast("Conta adicionada."); };
 $("#fc-auto").onchange=e=>{ S.fin.auto=e.target.checked; save(); };
+$("#ra-auto").onclick=distribuirRasc;
+$("#ra-atr").onclick=()=>{ raAtrasadas=!raAtrasadas; renderRasc(); };
+$("#ra-limpar").onclick=()=>{ if(!confirm("Apagar todas as entradas, avulsos e escolhas do rascunho?")) return; S.fin.rasc={entradas:[], aloc:{}, extras:[]}; save(); renderRasc(); };
+$("#ra-e-add").onclick=()=>{ const d=$("#ra-e-data").value, v=num($("#ra-e-valor").value), nome=$("#ra-e-nome").value.trim();
+  if(!d||!v){ toast("Preencha o dia e o valor da entrada."); return; }
+  S.fin.rasc.entradas.push({id:uid(), d, v, nome}); $("#ra-e-valor").value=$("#ra-e-nome").value=""; save(); renderRasc(); toast("Entrada adicionada."); };
+$("#ra-x-add").onclick=()=>{ const nome=$("#ra-x-nome").value.trim(), v=num($("#ra-x-valor").value), d=$("#ra-x-data").value;
+  if(!nome||!v){ toast("Preencha o que é e o valor."); return; }
+  S.fin.rasc.extras.push({id:uid(), nome, v, d}); $("#ra-x-nome").value=$("#ra-x-valor").value=$("#ra-x-data").value=""; save(); renderRasc(); toast("Pagamento adicionado."); };
 /* Com parcelas (n>1) o valor digitado é o de CADA parcela; com 1, é o total */
 function calcDivida(saldo,juros,n,dig){ n=Math.max(1,n||1); const vParc = dig ? (n>1 ? dig : r2(dig)) : parcelaPrice(saldo,juros,n);
   return {saldo,juros,n,vParc,total:r2(vParc*n),digitado:!!dig}; }

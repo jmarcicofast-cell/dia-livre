@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" id="fonte-css" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="css/app.css?v=5">
+<link rel="stylesheet" href="css/app.css?v=6">
 
 </head>
 <body>
@@ -177,6 +177,7 @@
       <button data-sub="orc">Orçamento</button>
       <button data-sub="cartoes">Cartões</button>
       <button data-sub="agenda">Contas</button>
+      <button data-sub="rasc">Rascunho</button>
       <button data-sub="dividas">Dívidas e objetivos</button>
       <button data-sub="banco">Banco</button>
     </nav>
@@ -301,6 +302,51 @@
         <select id="fc-cat" aria-label="Categoria da conta"></select>
         <button class="btn-soft" id="fc-add">Adicionar conta</button>
         <label class="check" style="border:0"><input type="checkbox" id="fc-auto"><span class="small">Lançar o gasto quando eu marcar a conta como paga<br><span class="muted">Desligue se o banco já traz esses pagamentos.</span></span></label>
+      </div>
+    </div>
+
+    <!-- Rascunho: o que cada entrada vai pagar -->
+    <div id="s-rasc" class="stack" data-subview hidden>
+      <div class="card">
+        <h2>Rascunho de pagamentos</h2>
+        <p class="muted small">Cadastre o que vai entrar e escolha o que cada entrada paga. É só um rascunho: nada é marcado como pago aqui.</p>
+        <dl class="kv kv2" id="ra-tot"><div><dt>Vai entrar</dt><dd id="ra-ent">R$ 0</dd></div><div><dt id="ra-sob-l">Sobra no fim</dt><dd id="ra-sob">R$ 0</dd></div></dl>
+        <p class="small" id="ra-dica"></p>
+        <div class="row">
+          <button class="btn-soft" id="ra-auto">Distribuir o que falta</button>
+          <button class="btn-link" id="ra-limpar">Recomeçar</button>
+        </div>
+        <p class="note">Distribuir põe cada conta na última entrada que chega antes do vencimento (o que não tem data vai para a primeira). Depois é só trocar o que quiser.</p>
+      </div>
+
+      <div id="ra-entradas" class="stack"></div>
+
+      <button class="btn-link" id="ra-atr" hidden></button>
+
+      <div class="card" id="ra-sem-card">
+        <div class="between"><h2>Sem entrada ainda</h2><b id="ra-sem-tot"></b></div>
+        <div id="ra-sem"></div>
+      </div>
+
+      <div class="card">
+        <h3>Nova entrada</h3>
+        <div class="row" style="flex-wrap:nowrap">
+          <label class="field" style="flex:1;min-width:0">Dia<input id="ra-e-data" type="date"></label>
+          <label class="field" style="flex:1;min-width:0">Valor (R$)<input id="ra-e-valor" class="valor" inputmode="decimal"></label>
+        </div>
+        <label class="field">Nome <span class="opt">opcional</span><input id="ra-e-nome" placeholder="Ex.: salário, adiantamento"></label>
+        <button class="btn-soft" id="ra-e-add">Adicionar entrada</button>
+      </div>
+
+      <div class="card">
+        <h3>Pagamento avulso</h3>
+        <p class="muted small">Para o que não está em Contas: uma compra, um empréstimo para alguém, o mercado.</p>
+        <input id="ra-x-nome" placeholder="O que é" aria-label="O que é o pagamento">
+        <div class="row" style="flex-wrap:nowrap">
+          <input id="ra-x-valor" class="valor" inputmode="decimal" placeholder="Valor (R$)" aria-label="Valor do pagamento" style="flex:1;min-width:0">
+          <input id="ra-x-data" type="date" aria-label="Vencimento (opcional)" style="flex:1;min-width:0">
+        </div>
+        <button class="btn-soft" id="ra-x-add">Adicionar pagamento</button>
       </div>
     </div>
 
@@ -470,7 +516,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=24"></script>
+<script type="module" src="js/main.js?v=25"></script>
 
 </body>
 </html>
