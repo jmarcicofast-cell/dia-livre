@@ -502,19 +502,20 @@ function totalDivida(d){ if(d.n>1) return r2((d.vParc||parcelaPrice(d.saldo,d.ju
   if(d.parc && d.parc>=d.saldo) return d.parc; return r2(d.saldo*(1+(d.juros||0)/100)); }
 function falta(d){ if(d.total==null) d.total=Math.max(0,totalDivida(d)-(d.pago||0)); return d.total; }
 
-function previsto(){
-  const f=S.fin; const mk=monthKey();
+function previsto(mk){
+  const f=S.fin; mk=mk||monthKey();
+  const renda=totaisMes(mk).ent;
   const contas=f.contas.reduce((a,c)=>a+(c.valor||0),0);
   const ativas=f.dividas.filter(d=>falta(d)>0);
   const div=ativas.reduce((a,d)=>a+Math.min(d.parc||totalDivida(d),falta(d)),0);
   const fat=f.cartoes.reduce((a,c)=>a+(faturaPaga(c,mk)?0:Math.max(0,fatura(c,mk))),0);
-  return {renda:f.renda||0, contas, div, fat, sobra:(f.renda||0)-contas-div-fat, ativas};
+  return {renda, contas, div, fat, sobra:renda-contas-div-fat, ativas};
 }
 function finText(){
   const n=previsto(), t=totaisMes(monthKey());
   if(!n.renda && !S.fin.contas.length && !n.ativas.length && !S.fin.lanc.length) return "";
   const cats = Object.entries(t.porCat).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k,v])=>cat(k).n+" "+brl(v)+(S.fin.orc[k]?" (limite "+brl(S.fin.orc[k])+")":"")).join("; ");
-  return "Finanças dela: renda mensal prevista "+brl(n.renda)+", contas fixas "+brl(n.contas)+", faturas de cartão do mês "+brl(n.fat)+", dívidas a pagar "+brl(n.div)+", sobra prevista "+brl(n.sobra)+". "+
+  return "Finanças dela: entradas lançadas no mês "+brl(n.renda)+", contas fixas "+brl(n.contas)+", faturas de cartão do mês "+brl(n.fat)+", dívidas a pagar "+brl(n.div)+", sobra prevista "+brl(n.sobra)+". "+
     "Neste mês já entrou "+brl(t.ent)+" e saiu "+brl(t.sai)+". Maiores gastos: "+(cats||"nenhum lançado")+". Dívidas: "+
     (n.ativas.map(d=>d.credor+" pegou "+brl(d.saldo)+", falta pagar "+brl(falta(d))+" (juros de "+d.juros+"% ao mês)").join("; ")||"nenhuma")+". Objetivos: "+(S.objetivos.map(o=>o.nome+" ("+brl(o.guardado)+" de "+brl(o.meta)+")").join("; ")||"nenhum")+".";
 }
@@ -609,17 +610,16 @@ function renderResumo(){
   $("#r-meses-tbl").textContent=""; $("#r-meses-tbl").append(tb);
 
   // previsto
-  const n=previsto();
+  const n=previsto(curMes);
   $("#f-renda-v").textContent=brl(n.renda); $("#f-contas-v").textContent=brl(n.contas); $("#f-parc-v").textContent=brl(n.div); $("#f-fat-v").textContent=brl(n.fat);
   $("#f-sobra-v").textContent=(n.sobra<0?"− ":"")+brl(Math.abs(n.sobra)); $("#f-sobra-v").parentElement.classList.toggle("neg", n.sobra<0);
   $("#f-sobra-l").textContent = n.sobra<0 ? "Falta no mês" : "Sobra do mês";
   const top = [...n.ativas].sort((a,b)=>b.juros-a.juros)[0];
   let dica="";
-  if(!n.renda) dica="Comece pelo quanto entra por mês. Os outros números aparecem logo acima.";
+  if(!n.renda) dica="Nenhuma entrada lançada em "+nomeMes(curMes,false)+". Lance salário, bicos ou pensão no + como entrada e o valor aparece aqui.";
   else if(n.sobra<0) dica="O mês fecha faltando "+brl(-n.sobra)+". Um novo empréstimo com agiota cobriria hoje e aumentaria esse buraco no mês que vem. Vale renegociar prazos e cortar uma conta antes.";
   else dica="Sobram "+brl(n.sobra)+" no mês."+(top?" A dívida que mais cresce é "+top.credor+" ("+top.juros+"% ao mês): coloque nela o que puder primeiro.":" Separe uma parte para os seus objetivos logo que o dinheiro entrar.");
   $("#f-dica").textContent=dica;
-  if(document.activeElement!==$("#f-renda")) $("#f-renda").value = S.fin.renda ? fmt(S.fin.renda) : "";
   $("#fin-btn").hidden = !sample && sampleChecked;
 }
 
@@ -773,7 +773,7 @@ function renderOrc(){
   $("#o-orc").textContent=brl(orc); $("#o-gasto").textContent=brl(t.sai);
   let d="";
   if(!orc) d="Comece pelas categorias onde o dinheiro mais escapa. Ex.: Comer fora e Compras.";
-  else if(S.fin.renda && orc>S.fin.renda) d="O orçamento soma mais do que entra no mês ("+brl(S.fin.renda)+"). Vale diminuir algum limite.";
+  else if(t.ent && orc>t.ent) d="O orçamento soma mais do que entrou no mês ("+brl(t.ent)+"). Vale diminuir algum limite.";
   else { const ok=Object.keys(S.fin.orc).filter(k=>S.fin.orc[k] && (t.porCat[k]||0)<=S.fin.orc[k]).length; const tot=Object.values(S.fin.orc).filter(Boolean).length;
     d=ok+" de "+tot+" categorias dentro do limite em "+nomeMes(curMes,false)+". Nas categorias com limite, já foi "+brl(gastoOrc)+"."; }
   $("#o-dica").textContent=d;
@@ -1477,8 +1477,6 @@ $("#sl-salvar").onclick=salvarLanc;
 $("#sl-apagar").onclick=()=>{ if(confirm("Apagar este lançamento?")) apagarLanc(); };
 $("#l-busca").oninput=e=>{ busca=e.target.value; renderLanc(); };
 $("#l-filtro").onchange=e=>{ filtroCat=e.target.value; renderLanc(); };
-$("#f-renda").oninput=e=>{ S.fin.renda=num(e.target.value); save(); };
-$("#f-renda").onchange=()=>renderDinheiro();
 $("#fc-add").onclick=()=>{ const nome=$("#fc-nome").value.trim(), valor=num($("#fc-valor").value), dia=Math.min(31,Math.max(0,parseInt($("#fc-dia").value)||0));
   if(!nome||!valor){ toast("Preencha o nome e o valor da conta."); return; }
   S.fin.contas.push({id:uid(),nome,valor,dia,cat:$("#fc-cat").value||"contas"}); $("#fc-nome").value=$("#fc-valor").value=$("#fc-dia").value=""; save(); renderDinheiro(); toast("Conta adicionada."); };
