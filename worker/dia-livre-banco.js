@@ -43,12 +43,25 @@ export default {
         const contents = (Array.isArray(corpo.contents) ? corpo.contents : []).slice(-40);
         if (!contents.length) return resp({ erro: "Mensagem vazia." }, 400);
         const modelo = /^gemini-[\w.-]+$/.test(corpo.model || "") ? corpo.model : "gemini-3.8-flash";
-        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + modelo + ":generateContent",
-          { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY }, body: JSON.stringify({ contents }) });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) return resp({ erro: "Gemini " + r.status + ": " + ((j.error && j.error.message) || "erro") }, r.status === 429 ? 429 : 502);
-        const text = ((j.candidates || [])[0]?.content?.parts || []).map(p => p.text || "").join("");
-        return resp({ text });
+        // Se o modelo estiver sobrecarregado (503/429/500), tenta de novo e depois passa para modelos reserva.
+        const fila = [...new Set([modelo, modelo, "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"])];
+        let ultimo = null;
+        for (let i = 0; i < fila.length; i++) {
+          if (i > 0) await new Promise(ok => setTimeout(ok, 800 * i));
+          const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + fila[i] + ":generateContent",
+            { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY }, body: JSON.stringify({ contents }) });
+          const j = await r.json().catch(() => ({}));
+          if (r.ok) {
+            const text = ((j.candidates || [])[0]?.content?.parts || []).map(p => p.text || "").join("");
+            return resp({ text, model: fila[i] });
+          }
+          ultimo = { status: r.status, msg: (j.error && j.error.message) || "erro" };
+          // Só vale tentar outro modelo se for sobrecarga ou modelo inexistente; erro de chave, por exemplo, não melhora.
+          if (![429, 500, 503, 404].includes(r.status)) break;
+        }
+        const ocupado = ultimo && [429, 500, 503].includes(ultimo.status);
+        return resp({ erro: ocupado ? "A IA do Google está sobrecarregada agora. Tente de novo em alguns minutos."
+          : "Gemini " + ultimo.status + ": " + ultimo.msg }, ultimo && ultimo.status === 429 ? 429 : 502);
       }
 
       for (const k of ["PLUGGY_CLIENT_ID", "PLUGGY_CLIENT_SECRET", "ALLOWED_EMAIL", "FIREBASE_PROJECT_ID"])
