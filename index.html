@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" id="fonte-css" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="css/app.css?v=3">
+<link rel="stylesheet" href="css/app.css?v=4">
 
 </head>
 <body>
@@ -54,7 +54,9 @@
 
     <div class="card">
       <h2>Últimas 5 semanas</h2>
+      <p class="muted small">Esqueceu de marcar algum dia? Toque nele no calendário.</p>
       <div class="cal" id="cal"></div>
+      <div id="cal-edit" class="cal-edit" hidden></div>
       <div class="legend"><span><i class="lg-ok"></i>Dia livre</span><span><i class="lg-fall"></i>Recaída</span></div>
     </div>
 
@@ -465,7 +467,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=18"></script>
+<script type="module" src="js/main.js?v=19"></script>
 
 </body>
 </html>

@@ -390,3 +390,10 @@ canvas#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-in
 @media (prefers-reduced-motion: reduce){.circle,.ring-fg,.gbar i{transition:none}.sheet,.sheet > .in{animation:none}button:active:not(:disabled){transform:none}}
 .sheet input:not([type=checkbox]):not([type=color]),.sheet select,.sheet textarea{background:var(--surface)}
 .sheet .seg{background:color-mix(in srgb, var(--ink) 7%, var(--bg))}
+
+.cal .d.tap{cursor:pointer}
+.cal .d.sel{outline:2px solid var(--primary);outline-offset:2px}
+.cal-edit{margin-top:12px;padding:12px;border-radius:14px;background:var(--sunk)}
+.cal-edit-t{margin:0 0 10px;font-weight:600;color:var(--ink)}
+.cal-edit-b{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cal-edit-b button{flex:0 0 auto}

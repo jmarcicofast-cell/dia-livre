@@ -278,8 +278,13 @@ function renderHoje(){
     if(k===tk) e.classList.add("today");
     e.textContent = parseKey(k).getDate();
     e.setAttribute("aria-label", k + (info ? (info.livre?" dia livre":" recaída") : ""));
+    if(diffDays(tk,k)<=0){ e.classList.add("tap"); e.setAttribute("role","button"); e.tabIndex=0;
+      if(k===calSel) e.classList.add("sel");
+      e.onclick=()=>{ calSel = (calSel===k ? null : k); renderHoje(); }; }
     cal.append(e);
   }
+
+  renderCalEdit();
 
   // Conquistas
   const bg = $("#badges"); bg.textContent="";
@@ -293,6 +298,45 @@ function renderHoje(){
   ];
   MILES.forEach(m=> addBadge(bg, String(m), m===1?"1 dia":m+" dias", b>=m));
   extra.forEach(([ic,t,on])=> addBadge(bg, ic, t, on));
+}
+/* ---------- Marcar um dia passado pelo calendário ---------- */
+let calSel = null;
+const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const SEMANA=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+function recalcInicio(){
+  // A contagem recomeça no dia seguinte à recaída mais recente
+  const tk=todayKey();
+  const quedas=Object.keys(S.dias).filter(k=>S.dias[k]&&!S.dias[k].livre&&diffDays(k,tk)>=0).sort();
+  if(quedas.length) S.inicio=addDays(quedas[quedas.length-1],1);
+  else { const ks=Object.keys(S.dias).filter(k=>diffDays(k,tk)>=0).sort(); if(ks.length && diffDays(ks[0],S.inicio)>0) S.inicio=ks[0]; }
+}
+function marcarDia(k, livre){
+  const antes=S.dias[k];
+  if(livre===null) delete S.dias[k];
+  else S.dias[k]={...(antes||{}), livre, vontade:(antes&&antes.vontade!=null)?antes.vontade:null};
+  if(livre===false){ S.recorde=best(); if(diffDays(S.inicio,addDays(k,1))>0) S.inicio=addDays(k,1); }
+  else if(antes && !antes.livre) recalcInicio();
+  if(livre===true && diffDays(k,S.inicio)>0 && !Object.keys(S.dias).some(x=>S.dias[x]&&!S.dias[x].livre&&diffDays(x,S.inicio)>0&&diffDays(k,x)>=0)) {
+    // marcou um dia livre antes do início, sem recaída no meio: a contagem passa a começar nele
+    let i=k; while(true){ const ant=addDays(i,-1); if(S.dias[ant]&&S.dias[ant].livre) i=ant; else break; }
+    S.inicio=i;
+  }
+  save(); renderAll();
+}
+function renderCalEdit(){
+  const box=$("#cal-edit"); if(!box) return;
+  if(!calSel || diffDays(todayKey(),calSel)>0){ box.hidden=true; box.textContent=""; return; }
+  const d=parseKey(calSel), info=S.dias[calSel];
+  const nome = calSel===todayKey() ? "Hoje" : SEMANA[d.getDay()][0].toUpperCase()+SEMANA[d.getDay()].slice(1)+", "+d.getDate()+" de "+MESES[d.getMonth()];
+  box.hidden=false; box.textContent="";
+  const h=document.createElement("p"); h.className="cal-edit-t"; h.textContent=nome+(info?(info.livre?" · dia livre":" · recaída"):" · sem marcação"); box.append(h);
+  const row=document.createElement("div"); row.className="cal-edit-b";
+  const mk=(txt,cls,fn)=>{ const b=document.createElement("button"); b.className=cls; b.textContent=txt; b.onclick=fn; row.append(b); };
+  if(!info||!info.livre) mk("Não peguei","btn-primary",()=>{ marcarDia(calSel,true); toast("Dia livre marcado."); });
+  if(!info||info.livre) mk("Peguei","btn-soft",()=>{ marcarDia(calSel,false); toast("Dia registrado."); });
+  if(info) mk("Limpar","btn-link",()=>{ marcarDia(calSel,null); toast("Marcação removida."); });
+  mk("Fechar","btn-link",()=>{ calSel=null; renderHoje(); });
+  box.append(row);
 }
 function addBadge(p, ic, t, on){
   const d=document.createElement("div"); d.className="badge"+(on?" on":"");
