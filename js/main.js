@@ -1024,6 +1024,7 @@ function renderPlano(pensando){
   o.hidden = !msgs.length && !pensando; f.hidden = !msgs.length;
   o.replaceChildren(...msgs.map(m=>el("div","msg "+(m.role==="user"?"u":"a"),m.content)));
   if(pensando){ const p=el("div","msg a","Pensando..."); p.id="fin-pensando"; o.append(p); }
+  o.scrollTop=o.scrollHeight;
   $("#fin-btn").lastChild.textContent = msgs.length ? "Começar plano de novo" : "Montar plano do mês";
 }
 async function planoResponder(){
@@ -1032,11 +1033,11 @@ async function planoResponder(){
   const msgs=planoMsgs();
   const turns=msgs.map((m,i)=>({role:m.role, content: i===0 ? RULES+"\n"+contextText()+"\n\n"+m.content+PLANO_REGRAS : m.content}));
   try{
-    const r=await sample(turns,{onText:({text})=>{ const p=$("#fin-pensando"); if(p) p.textContent=text; }});
+    const r=await sample(turns,{onText:({text})=>{ const p=$("#fin-pensando"); if(!p) return; const o=$("#fin-out"), perto=o.scrollHeight-o.scrollTop-o.clientHeight<60; p.textContent=text; if(perto) o.scrollTop=o.scrollHeight; }});
     msgs.push({role:"assistant", content:r.text.trim()}); save();
   }catch(e){ msgs.push({role:"assistant", content:aiErr(e)||"Tente de novo.", erro:true}); }
   renderPlano(); b.disabled=env.disabled=false;
-  const o=$("#fin-out"); o.lastChild && o.lastChild.scrollIntoView({block:"nearest",behavior:"smooth"});
+  const o=$("#fin-out"), u=o.lastChild; if(u) o.scrollTop=Math.max(0, u.offsetTop-8);
 }
 async function planoFin(){
   if(!sample) return;
