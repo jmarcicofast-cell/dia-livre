@@ -93,7 +93,7 @@ function geminiSample(model){
       catch(e){ if(opts.signal && opts.signal.aborted) throw {code:"cancelled"}; r=null; }
       if(r && r.ok && j.text && j.text.trim()){ opts.onText && opts.onText({text:j.text, delta:j.text}); return {text:j.text, truncated:false}; }
       if(r && r.status===429) throw {code:"rate_limited", message:j.erro||""};
-      if(r && j.erro && !/Falta configurar GEMINI_API_KEY|Rota não encontrada/.test(j.erro)) throw {code:"upstream_error", message:"Servidor: "+j.erro+(r.status===401?" (Você está no app com: "+(auth.currentUser.email||"e-mail desconhecido")+")":"")};
+      if(r && j.erro && !/Falta configurar GEMINI_API_KEY|Rota não encontrada/.test(j.erro)) throw {code:"upstream_error", message:"Servidor: "+j.erro+(r.status===401?await (async()=>{ let x=""; try{ const t=await auth.currentUser.getIdToken(); const pl=JSON.parse(decodeURIComponent(escape(atob(t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/"))))); x=" [projeto: "+pl.aud+", verificado: "+(pl.email_verified?"sim":"não")+", login: "+((pl.firebase&&pl.firebase.sign_in_provider)||"?")+", token: "+t.length+"]"; }catch(_){ x=" [não li o token]"; } return " (Você está no app com: "+(auth.currentUser.email||"e-mail desconhecido")+")"+x; })():"")};
     }
     try{
       const res = await model.generateContentStream({contents});
