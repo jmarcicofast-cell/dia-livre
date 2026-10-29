@@ -1021,7 +1021,7 @@ function renderRasc(){
   $("#ra-auto").disabled=!ents.length||!sem.length; $("#ra-limpar").hidden=!ents.length&&!itens.some(it=>it.tipo==="x");
   const ed0=$("#ra-e-data"); if(!ed0.value || ed0.dataset.mes!==curMes){ ed0.value = curMes===monthKey() ? todayKey() : curMes+"-01"; ed0.dataset.mes=curMes; }
   $("#ra-x-data").min=curMes+"-01"; $("#ra-x-data").max=curMes+"-"+pad(diasNoMes(curMes));
-  renderPuxar();
+  renderPuxar(); renderPuxarEnt();
 }
 function distribuirRasc(){
   const ents=entradasOrd(); if(!ents.length) return; let n=0;
@@ -1063,6 +1063,20 @@ function renderPuxar(){
   op.forEach((o,i)=>sl.append(new Option(o.rot, i)));
   sl._op=op; preencherPuxar();
 }
+/* Entradas já lançadas (últimos 3 meses), agrupadas por nome, com o mesmo dia no mês escolhido */
+function renderPuxarEnt(){
+  const sl=$("#ra-e-puxar"), vistos=new Map(), lim=addMes(monthKey(),-3)+"-01";
+  [...S.fin.lanc].filter(l=>l.t==="e" && (l.d||"")>=lim).sort((a,b)=>(b.d||"").localeCompare(a.d||""))
+    .forEach(l=>{ const k=normDesc(l.desc)||("cat:"+l.cat); if(vistos.has(k)){ vistos.get(k).vezes++; return; }
+      vistos.set(k,{nome:l.desc||cat(l.cat).n, v:l.v, dia:+l.d.slice(8), ult:l.d, vezes:1}); });
+  const op=[...vistos.values()].sort((a,b)=>b.vezes-a.vezes||b.ult.localeCompare(a.ult));
+  if(S.fin.renda && !op.length) op.push({nome:"Renda do mês", v:S.fin.renda, dia:0});
+  sl.textContent=""; sl.append(new Option(op.length?"Escolher uma entrada já lançada":"Nenhuma entrada lançada nos últimos 3 meses",""));
+  op.forEach((o,i)=>sl.append(new Option(o.nome+" · "+brl(o.v)+(o.dia?" · dia "+o.dia:"")+(o.vezes>1?" · "+o.vezes+"x":""), i)));
+  sl.disabled=!op.length; sl._op=op;
+}
+function preencherPuxarEnt(){ const sl=$("#ra-e-puxar"), o=(sl._op||[])[+sl.value]; if(!o) return;
+  $("#ra-e-nome").value=o.nome; $("#ra-e-valor").value=fmt(o.v); if(o.dia) $("#ra-e-data").value=diaEm(curMes,o.dia); }
 function preencherPuxar(){ const sl=$("#ra-p-item"), o=(sl._op||[])[+sl.value]; if(!o) return;
   $("#ra-p-valor").value=fmt(o.v); $("#ra-p-data").value=o.d||""; }
 function addPuxar(){
@@ -1625,6 +1639,7 @@ $("#ra-auto").onclick=distribuirRasc;
 $$("#ra-p-tipo button").forEach(b=>b.onclick=()=>{ raPTipo=b.dataset.t; renderPuxar(); });
 $("#ra-p-item").onchange=preencherPuxar;
 $("#ra-p-add").onclick=addPuxar;
+$("#ra-e-puxar").onchange=preencherPuxarEnt;
 $("#ra-atr").onclick=()=>{ raAtrasadas=!raAtrasadas; renderRasc(); };
 $("#ra-limpar").onclick=()=>{ const mk=curMes, R=S.fin.rasc; if(!confirm("Apagar as entradas, avulsos e escolhas do rascunho de "+nomeMes(mk,false)+"?")) return;
   const ents=new Set(entradasOrd(mk).map(e=>e.id)), xs=new Set(R.extras.filter(x=>mesX(x)===mk).map(x=>x.id));
