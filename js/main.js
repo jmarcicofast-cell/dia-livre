@@ -867,9 +867,13 @@ function itensDoMes(mk){
   const hoje=todayKey(); const pagos=S.fin.pagos[mk]||{}; const out=[];
   S.fin.contas.forEach(c=>{ const d=diaEm(mk,c.dia); const pg=!!pagos[c.id]; out.push({tipo:"conta", ref:c, d, nome:c.nome, v:c.valor, pg, atr:!pg&&d<hoje}); });
   S.fin.cartoes.forEach(c=>{ const v=fatura(c,mk); if(v<=0) return; const d=diaEm(mk,c.vence); const pg=faturaPaga(c,mk); out.push({tipo:"fatura", ref:c, d, nome:"Fatura "+c.nome, v, pg, atr:!pg&&d<hoje}); });
-  S.fin.dividas.forEach(dv=>{ const k=parcelaNoMes(dv,mk); if(!k) return; const d=diaEm(mk,(dv.diaMes||{})[mk]||dv.dia); const pg=!!(dv.pagMes||{})[mk] || falta(dv)<=0;
-    const n=dv.n>1?dv.n:1; const v = n>1 ? dv.vParc : (pg ? (dv.pagMes[mk]||totalDivida(dv)) : falta(dv));
-    out.push({tipo:"divida", ref:dv, d, nome:dv.credor+(n>1?" ("+k+"/"+n+")":""), v, pg, atr:!pg&&d<hoje}); });
+  /* dv.mover[mêsOriginal] = "AAAA-MM-DD": parcela levada para outro mês; o pagamento continua no mês original (pagMes) */
+  S.fin.dividas.forEach(dv=>{ const mv=dv.mover||{}, orig=[];
+    if(parcelaNoMes(dv,mk) && !mv[mk]) orig.push([mk, diaEm(mk,(dv.diaMes||{})[mk]||dv.dia)]);
+    Object.entries(mv).forEach(([o,d])=>{ if(d.slice(0,7)===mk && parcelaNoMes(dv,o)) orig.push([o,d]); });
+    orig.forEach(([o,d])=>{ const k=parcelaNoMes(dv,o); const pg=!!(dv.pagMes||{})[o] || falta(dv)<=0;
+      const n=dv.n>1?dv.n:1; const v = n>1 ? dv.vParc : (pg ? (dv.pagMes[o]||totalDivida(dv)) : falta(dv));
+      out.push({tipo:"divida", ref:dv, d, mkOrig:o, nome:dv.credor+(n>1?" ("+k+"/"+n+")":"")+(o!==mk?" · de "+nomeMes(o,false):""), v, pg, atr:!pg&&d<hoje}); }); });
   return out.sort((a,b)=>a.d.localeCompare(b.d));
 }
 /* Em qual parcela (1..n) a dívida está no mês mk; 0 se não cai nesse mês */
@@ -887,15 +891,18 @@ function marcarDivida(dv, mk, v, pago){
 function linhaItem(it, mk){
   const r=el("label","conta"+(it.pg?" paid":""));
   const ck=el("input"); ck.type="checkbox"; ck.checked=it.pg;
-  ck.onchange=()=>{ if(it.tipo==="conta") marcarConta(it.ref, mk, ck.checked); else if(it.tipo==="divida") marcarDivida(it.ref, mk, it.v, ck.checked); else { S.fin.fatPagas[it.ref.id]=S.fin.fatPagas[it.ref.id]||{}; S.fin.fatPagas[it.ref.id][mk]=ck.checked; save(); renderDinheiro(); } if(ck.checked) toast("Paga. Uma preocupação a menos."); };
+  ck.onchange=()=>{ if(it.tipo==="conta") marcarConta(it.ref, mk, ck.checked); else if(it.tipo==="divida") marcarDivida(it.ref, it.mkOrig||mk, it.v, ck.checked); else { S.fin.fatPagas[it.ref.id]=S.fin.fatPagas[it.ref.id]||{}; S.fin.fatPagas[it.ref.id][mk]=ck.checked; save(); renderDinheiro(); } if(ck.checked) toast("Paga. Uma preocupação a menos."); };
   const nm=el("span","nm",it.nome); nm.append(el("small",null,(it.atr?"atrasada · ":"")+"vence dia "+(+it.d.slice(8))+(it.tipo==="conta"&&it.ref.cat?" · "+cat(it.ref.cat).n:"")+(it.tipo==="divida"?" · Dívida":"")));
   r.append(ck, nm, el("span","vl",brl(it.v)));
   if(it.tipo==="divida" && !it.pg){ const b=el("button","x","Mudar data"); b.style.fontSize=".8125rem"; b.setAttribute("aria-label","Mudar a data de "+it.nome+" neste mês");
     b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); const sm=nm.querySelector("small"); if(sm.querySelector("input")) return;
-      const di=el("input"); di.type="date"; di.min=mk+"-01"; di.max=mk+"-"+pad(diasNoMes(mk)); di.value=it.d; di.style.marginTop="4px";
+      const di=el("input"); di.type="date"; di.value=it.d; di.style.marginTop="4px";
       const ok=el("button","btn-soft","Salvar"); ok.style.marginLeft="6px";
-      ok.onclick=ev=>{ ev.preventDefault(); ev.stopPropagation(); if(!di.value.startsWith(mk)){ toast("Escolha um dia de "+nomeMes(mk,false)+"."); return; }
-        const dv=it.ref; dv.diaMes=dv.diaMes||{}; dv.diaMes[mk]=+di.value.slice(8); save(); renderDinheiro(); toast("Data alterada só neste mês."); };
+      ok.onclick=ev=>{ ev.preventDefault(); ev.stopPropagation(); if(!di.value){ toast("Escolha a nova data."); return; }
+        const dv=it.ref, o=it.mkOrig||mk, nmk=di.value.slice(0,7); dv.mover=dv.mover||{}; dv.diaMes=dv.diaMes||{};
+        if(nmk===o){ delete dv.mover[o]; dv.diaMes[o]=+di.value.slice(8); } else dv.mover[o]=di.value;
+        save(); if(nmk!==curMes){ curMes=nmk; diaSel=""; } renderDinheiro();
+        toast(nmk===mk?"Data alterada.":"Levada para "+nomeMes(nmk,false)+"."); };
       di.onclick=ev=>ev.stopPropagation(); sm.append(el("br"), di, ok); try{ di.showPicker&&di.showPicker(); }catch(_){} };
     r.append(b); }
   if(it.tipo==="conta"){ const x=el("button","x","✕"); x.setAttribute("aria-label","Remover "+it.nome);
