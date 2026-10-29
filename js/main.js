@@ -541,6 +541,7 @@ function goSub(n){
   renderDinheiro();
 }
 function renderDinheiro(){
+  try{ renderPlano(); }catch(e){}
   sujo();
   $$(".mes-nome").forEach(e=>e.textContent=nomeMes(curMes).replace(/^./,x=>x.toUpperCase()));
   if(sub==="resumo") renderResumo();
@@ -1011,14 +1012,45 @@ function renderDividas(){
 }
 
 let sampleChecked=false;
+const PLANO_INICIO = "Vamos montar juntas o plano deste mês. Com base nos números de finanças acima, NÃO monte o plano ainda. "
+  + "Primeiro faça perguntas para entender a situação dela de forma personalizada: uma pergunta curta por mensagem, no máximo 4 no total, "
+  + "escolhendo as que mais mudam o plano (por exemplo: quanto entra e em que dia, o que está dentro de \"Outros gastos\", qual dívida aperta mais ou tem cobrança mais próxima, o que é essencial e o que dá para cortar). "
+  + "Comece cumprimentando em uma frase e já faça a primeira pergunta. Não pergunte o que já está nos números.";
+const PLANO_REGRAS = "\n\nRegras deste plano: quando já tiver informação suficiente (ou depois da 4ª resposta), monte o plano em até 8 linhas curtas, com valores em reais: contas, faturas, dívidas (priorizando a de juro mais alto, especialmente agiota), objetivos e dia a dia, e um limite realista para a categoria que mais pesa. "
+  + "Se faltar dinheiro, sugira cortes e renegociação, nunca um novo empréstimo. Termine perguntando se ela quer ajustar algo. Depois disso, ajuste o plano conforme ela responder.";
+function planoMsgs(){ if(!S.fin.planoChat) S.fin.planoChat=[]; return S.fin.planoChat; }
+function renderPlano(pensando){
+  const o=$("#fin-out"), f=$("#fin-form"), msgs=planoMsgs().filter(m=>!m.oculta);
+  o.hidden = !msgs.length && !pensando; f.hidden = !msgs.length;
+  o.replaceChildren(...msgs.map(m=>el("div","msg "+(m.role==="user"?"u":"a"),m.content)));
+  if(pensando){ const p=el("div","msg a","Pensando..."); p.id="fin-pensando"; o.append(p); }
+  $("#fin-btn").lastChild.textContent = msgs.length ? "Começar plano de novo" : "Montar plano do mês";
+}
+async function planoResponder(){
+  const b=$("#fin-btn"), env=$("#fin-send"); b.disabled=env.disabled=true;
+  renderPlano(true);
+  const msgs=planoMsgs();
+  const turns=msgs.map((m,i)=>({role:m.role, content: i===0 ? RULES+"\n"+contextText()+"\n\n"+m.content+PLANO_REGRAS : m.content}));
+  try{
+    const r=await sample(turns,{onText:({text})=>{ const p=$("#fin-pensando"); if(p) p.textContent=text; }});
+    msgs.push({role:"assistant", content:r.text.trim()}); save();
+  }catch(e){ msgs.push({role:"assistant", content:aiErr(e)||"Tente de novo.", erro:true}); }
+  renderPlano(); b.disabled=env.disabled=false;
+  const o=$("#fin-out"); o.lastChild && o.lastChild.scrollIntoView({block:"nearest",behavior:"smooth"});
+}
 async function planoFin(){
   if(!sample) return;
-  const b=$("#fin-btn"), o=$("#fin-out"); b.disabled=true; o.hidden=false; o.textContent="Lendo seus números...";
-  try{
-    await sample(RULES+"\n"+contextText()+"\n\nCom base nos números de finanças acima, monte um plano simples para este mês em até 8 linhas curtas: quanto separar para contas, faturas, dívidas (priorizando a de juro mais alto, especialmente agiota), objetivos e dia a dia. Aponte a categoria de gasto que mais pesa e um limite realista para ela. Se faltar dinheiro no mês, sugira cortes e renegociação, nunca um novo empréstimo. Se faltarem números, diga quais preencher. Use valores em reais.",
-      {onText:({text})=>{ o.textContent=text; }});
-  }catch(e){ o.textContent=aiErr(e)||"Tente de novo."; }
-  b.disabled=false;
+  if(planoMsgs().some(m=>!m.oculta) && !confirm("Começar o plano do mês do zero?")) return;
+  S.fin.planoChat=[{role:"user", content:PLANO_INICIO, oculta:true}];
+  await planoResponder();
+}
+async function planoEnviar(ev){
+  ev && ev.preventDefault();
+  const t=$("#fin-msg"), txt=t.value.trim(); if(!txt || !sample || $("#fin-send").disabled) return;
+  // descarta mensagens de erro antes de continuar, para não confundir a IA
+  S.fin.planoChat=planoMsgs().filter(m=>!m.erro);
+  S.fin.planoChat.push({role:"user", content:txt}); t.value=""; save();
+  await planoResponder();
 }
 
 /* ================= BANCO (Meu Pluggy, pelo servidor no Cloudflare) ================= */
@@ -1474,6 +1506,8 @@ $("#obj-add").onclick=()=>{ const nome=$("#obj-nome").value.trim(), meta=num($("
   if(!nome||!meta){ toast("Dê um nome e um valor ao objetivo."); return; }
   S.objetivos.push({id:uid(),nome,meta,guardado:0}); $("#obj-nome").value=$("#obj-meta").value=""; save(); renderDinheiro(); toast("Objetivo criado."); };
 $("#fin-btn").onclick=planoFin;
+$("#fin-form").onsubmit=planoEnviar;
+$("#fin-msg").addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); planoEnviar(); } });
 $("#o-cat-add").onclick=()=>{ const n=$("#o-cat-nome").value.trim(); if(!n){ toast("Dê um nome à categoria."); return; }
   S.fin.cats.push({id:"c"+uid(), n, ic:"tag"}); $("#o-cat-nome").value=""; save(); renderOrc(); toast("Categoria criada."); };
 $("#c-add").onclick=()=>{ const nome=$("#c-nome").value.trim(); if(!nome){ toast("Dê um nome ao cartão."); return; }

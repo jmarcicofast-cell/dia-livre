@@ -221,8 +221,12 @@
 
       <div class="card">
         <h2>Plano do mês</h2>
-        <p class="muted small">A IA lê seus números e sugere como dividir o dinheiro do mês.</p>
-        <div class="ai-out" id="fin-out" hidden></div>
+        <p class="muted small">A IA lê seus números, faz algumas perguntas para entender o seu mês e monta o plano com você.</p>
+        <div class="chat plano-chat" id="fin-out" hidden></div>
+        <form class="composer" id="fin-form" hidden>
+          <textarea id="fin-msg" rows="1" placeholder="Responda aqui..." enterkeyhint="send"></textarea>
+          <button class="btn-primary" id="fin-send" type="submit" aria-label="Enviar">Enviar</button>
+        </form>
         <button class="btn-soft" id="fin-btn"><i data-ic="ia"></i>Montar plano do mês</button>
       </div>
     </div>
