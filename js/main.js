@@ -954,8 +954,9 @@ function itensRasc(){
   const R=S.fin.rasc, ents=entradasOrd();
   let fim=monthKey(); ents.forEach(e=>{ if(e.d.slice(0,7)>fim) fim=e.d.slice(0,7); });
   const out=[];
+  const puxados=new Set(R.extras.map(x=>x.ref).filter(Boolean));
   for(let mk=monthKey(); mk<=fim; mk=addMes(mk,1))
-    itensDoMes(mk).forEach(it=>{ const k=chaveIt(it); if(R.aloc[k] || (!it.pg && (raAtrasadas || !it.atr))) out.push(it); });
+    itensDoMes(mk).forEach(it=>{ const k=chaveIt(it); if(puxados.has(k)) return; if(R.aloc[k] || (!it.pg && (raAtrasadas || !it.atr))) out.push(it); });
   R.extras.forEach(x=>out.push({tipo:"x", ref:x, d:x.d||"", nome:x.nome, v:x.v, pg:false}));
   return out;
 }
@@ -964,7 +965,8 @@ function linhaRasc(it, ents){
   const r=el("div","ra-it"+(it.pg?" pg":""));
   const nm=el("div","nm",it.nome); const eid=entradaDe(it); const e=ents.find(x=>x.id===eid);
   const info=[]; if(it.pg) info.push("já paga"); if(it.d) info.push("vence "+dm(it.d));
-  info.push(it.tipo==="conta"?"Conta":it.tipo==="fatura"?"Cartão":it.tipo==="divida"?"Dívida":"Avulso");
+  const de = it.tipo==="x" ? it.ref.de : it.tipo;
+  info.push(de==="conta"?"Conta":de==="fatura"?"Cartão":de==="divida"?"Dívida":de==="gasto"?"Gasto":"Avulso");
   nm.append(el("small",null,info.join(" · ")));
   if(e && it.d && it.d<e.d && !it.pg) nm.append(el("small","av","Vence antes dessa entrada chegar"));
   r.append(nm, el("span","vl",brl(it.v)));
@@ -1017,6 +1019,7 @@ function renderRasc(){
     : sobra<0 ? "As entradas não cobrem tudo o que foi escolhido. Veja o que dá para mudar de data ou negociar." : "Tudo tem de onde sair.";
   $("#ra-auto").disabled=!ents.length||!sem.length; $("#ra-limpar").hidden=!ents.length&&!R.extras.length;
   if(!$("#ra-e-data").value) $("#ra-e-data").value=todayKey();
+  renderPuxar();
 }
 function distribuirRasc(){
   const ents=entradasOrd(); if(!ents.length) return; let n=0;
@@ -1024,6 +1027,53 @@ function distribuirRasc(){
     const antes=it.d ? ents.filter(e=>e.d<=it.d) : []; const e = antes.length ? antes[antes.length-1] : ents[0];
     S.fin.rasc.aloc[chaveIt(it)]=e.id; n++; });
   save(); renderRasc(); toast(n+(n===1?" conta distribuída.":" contas distribuídas."));
+}
+
+/* Escolher do que já está cadastrado: dívidas, contas e gastos lançados */
+let raPTipo="divida";
+function opcoesPuxar(t){
+  const hoje=todayKey(), mk0=monthKey(), out=[];
+  if(t==="divida") S.fin.dividas.filter(d=>falta(d)>0).forEach(d=>{
+    const n=d.n>1?d.n:1; let d1="", v=n>1?Math.min(d.vParc,falta(d)):falta(d), parc="";
+    if(d.inicio) for(let mk=d.inicio<mk0?mk0:d.inicio, i=0; i<60; mk=addMes(mk,1), i++){ const k=parcelaNoMes(d,mk); if(!k) { if(mk>d.inicio) break; continue; }
+      if(!(d.pagMes||{})[mk]){ d1=diaEm(mk,(d.diaMes||{})[mk]||d.dia); if(n>1) parc=" · parcela "+k+"/"+n; break; } }
+    out.push({id:d.id, rot:d.credor+" · "+brl(v)+parc+" (falta "+brl(falta(d))+")", nome:d.credor+(parc?" ("+parc.slice(11)+")":""), v, d:d1}); });
+  if(t==="conta"){
+    S.fin.contas.forEach(c=>{ let mk=mk0; if(c.dia && ((S.fin.pagos[mk]||{})[c.id] || diaEm(mk,c.dia)<hoje)) mk=addMes(mk,1);
+      const d1=c.dia?diaEm(mk,c.dia):""; out.push({id:c.id, sub:"conta", rot:c.nome+" · "+brl(c.valor)+(c.dia?" · dia "+c.dia:""), nome:c.nome, v:c.valor, d:d1}); });
+    S.fin.cartoes.forEach(c=>{ for(let i=0,mk=mk0;i<3;i++,mk=addMes(mk,1)){ const v=fatura(c,mk); if(v>0 && !faturaPaga(c,mk)){
+      out.push({id:c.id, sub:"fatura", rot:"Fatura "+c.nome+" · "+brl(v)+" · "+nomeMes(mk,false), nome:"Fatura "+c.nome, v, d:diaEm(mk,c.vence)}); break; } } });
+  }
+  if(t==="gasto"){ const vistos=new Map(), lim=addMes(mk0,-3)+"-01";
+    [...S.fin.lanc].filter(l=>l.t==="s" && l.src!=="conta" && l.src!=="div" && (l.d||"")>=lim).sort((a,b)=>(b.d||"").localeCompare(a.d||""))
+      .forEach(l=>{ const k=normDesc(l.desc)||("cat:"+l.cat); if(vistos.has(k)) { vistos.get(k).vezes++; return; }
+        vistos.set(k,{id:l.id, nome:l.desc||cat(l.cat).n, v:l.v, d:"", ult:l.d, vezes:1}); });
+    [...vistos.values()].sort((a,b)=>b.vezes-a.vezes || (b.ult||"").localeCompare(a.ult||"")).forEach(g=>{
+      g.rot=g.nome+" · "+brl(g.v)+(g.vezes>1?" · "+g.vezes+"x nos últimos meses":" · em "+dm(g.ult)); out.push(g); });
+  }
+  return out;
+}
+function renderPuxar(){
+  const op=opcoesPuxar(raPTipo), sl=$("#ra-p-item"); sl.textContent="";
+  $$("#ra-p-tipo button").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.t===raPTipo)));
+  const vazio = {divida:"Nenhuma dívida em aberto cadastrada.", conta:"Nenhuma conta ou fatura em aberto cadastrada.", gasto:"Nenhum gasto lançado nos últimos 3 meses."}[raPTipo];
+  $("#ra-p-vazio").hidden=!!op.length; $("#ra-p-vazio").textContent=vazio; sl.hidden=!op.length;
+  $("#ra-p-add").disabled=!op.length;
+  op.forEach((o,i)=>sl.append(new Option(o.rot, i)));
+  sl._op=op; preencherPuxar();
+}
+function preencherPuxar(){ const sl=$("#ra-p-item"), o=(sl._op||[])[+sl.value]; if(!o) return;
+  $("#ra-p-valor").value=fmt(o.v); $("#ra-p-data").value=o.d||""; }
+function addPuxar(){
+  const sl=$("#ra-p-item"), o=(sl._op||[])[+sl.value]; if(!o) return;
+  const v=num($("#ra-p-valor").value), d=$("#ra-p-data").value; if(!v){ toast("Preencha o valor."); return; }
+  const tipo = raPTipo==="conta" ? o.sub : raPTipo;
+  const ref = tipo!=="gasto" && d ? tipo+"|"+o.id+"|"+d.slice(0,7) : "";
+  const R=S.fin.rasc;
+  if(ref && R.extras.some(x=>x.ref===ref)){ toast("Isso já está no rascunho."); return; }
+  const x={id:uid(), nome:o.nome, v, d, de:tipo, ref};
+  if(ref && R.aloc[ref]){ R.aloc["x|"+x.id]=R.aloc[ref]; delete R.aloc[ref]; }
+  R.extras.push(x); save(); renderRasc(); toast(o.nome+" foi para o rascunho.");
 }
 
 /* ---------- Dívidas e objetivos ---------- */
@@ -1570,6 +1620,9 @@ $("#fc-add").onclick=()=>{ const nome=$("#fc-nome").value.trim(), valor=num($("#
   S.fin.contas.push({id:uid(),nome,valor,dia,cat:$("#fc-cat").value||"contas"}); $("#fc-nome").value=$("#fc-valor").value=$("#fc-dia").value=""; save(); renderDinheiro(); toast("Conta adicionada."); };
 $("#fc-auto").onchange=e=>{ S.fin.auto=e.target.checked; save(); };
 $("#ra-auto").onclick=distribuirRasc;
+$$("#ra-p-tipo button").forEach(b=>b.onclick=()=>{ raPTipo=b.dataset.t; renderPuxar(); });
+$("#ra-p-item").onchange=preencherPuxar;
+$("#ra-p-add").onclick=addPuxar;
 $("#ra-atr").onclick=()=>{ raAtrasadas=!raAtrasadas; renderRasc(); };
 $("#ra-limpar").onclick=()=>{ if(!confirm("Apagar todas as entradas, avulsos e escolhas do rascunho?")) return; S.fin.rasc={entradas:[], aloc:{}, extras:[]}; save(); renderRasc(); };
 $("#ra-e-add").onclick=()=>{ const d=$("#ra-e-data").value, v=num($("#ra-e-valor").value), nome=$("#ra-e-nome").value.trim();

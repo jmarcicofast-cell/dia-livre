@@ -338,6 +338,23 @@
         <button class="btn-soft" id="ra-e-add">Adicionar entrada</button>
       </div>
 
+      <div class="card" id="ra-p-card">
+        <h3>Escolher do que já está cadastrado</h3>
+        <p class="muted small">Puxe uma dívida, uma conta ou um gasto que você já lançou. Dá para ajustar o valor e a data antes de pôr no rascunho.</p>
+        <div class="seg" id="ra-p-tipo" aria-label="O que escolher">
+          <button data-t="divida" aria-pressed="true">Dívidas</button>
+          <button data-t="conta" aria-pressed="false">Contas</button>
+          <button data-t="gasto" aria-pressed="false">Gastos</button>
+        </div>
+        <select id="ra-p-item" aria-label="Escolher item cadastrado"></select>
+        <p class="small muted" id="ra-p-vazio" hidden></p>
+        <div class="row" style="flex-wrap:nowrap">
+          <label class="field" style="flex:1;min-width:0">Valor (R$)<input id="ra-p-valor" class="valor" inputmode="decimal"></label>
+          <label class="field" style="flex:1;min-width:0">Vence <span class="opt">opcional</span><input id="ra-p-data" type="date"></label>
+        </div>
+        <button class="btn-soft" id="ra-p-add">Pôr no rascunho</button>
+      </div>
+
       <div class="card">
         <h3>Pagamento avulso</h3>
         <p class="muted small">Para o que não está em Contas: uma compra, um empréstimo para alguém, o mercado.</p>
@@ -516,7 +533,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=25"></script>
+<script type="module" src="js/main.js?v=26"></script>
 
 </body>
 </html>
