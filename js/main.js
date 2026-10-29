@@ -93,7 +93,7 @@ function geminiSample(model){
       catch(e){ if(opts.signal && opts.signal.aborted) throw {code:"cancelled"}; r=null; }
       if(r && r.ok && j.text && j.text.trim()){ opts.onText && opts.onText({text:j.text, delta:j.text}); return {text:j.text, truncated:false}; }
       if(r && r.status===429) throw {code:"rate_limited", message:j.erro||""};
-      if(r && j.erro && !/Falta configurar GEMINI_API_KEY|Rota não encontrada/.test(j.erro)) throw {code:"upstream_error", message:"Servidor: "+j.erro};
+      if(r && j.erro && !/Falta configurar GEMINI_API_KEY|Rota não encontrada/.test(j.erro)) throw {code:"upstream_error", message:"Servidor: "+j.erro+(r.status===401?" (Você está no app com: "+(auth.currentUser.email||"e-mail desconhecido")+")":"")};
     }
     try{
       const res = await model.generateContentStream({contents});
