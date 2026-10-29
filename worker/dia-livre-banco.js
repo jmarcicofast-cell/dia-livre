@@ -127,28 +127,23 @@ async function listarContas(pluggy, itemId) {
   return r.results || [];
 }
 async function listarTransacoes(pluggy, accountId, desde) {
+  // GET /v2/transactions com paginação por cursor. A Pluggy devolve "next" já pronto
+  // (ex.: "?accountId=...&after=CURSOR"), que deve ser colado no fim do endereço como veio.
+  // O endpoint antigo /transactions foi desligado (responde 410), então não há mais volta para ele.
   const out = [];
-  // Versão nova (paginação por cursor)
-  try {
-    let caminho = "/v2/transactions?accountId=" + encodeURIComponent(accountId) + "&dateFrom=" + desde;
-    for (let i = 0; i < 25 && caminho; i++) {
-      const r = await pluggy("GET", caminho);
-      out.push(...(r.results || []));
-      const nx = r.next;
-      if (!nx) caminho = "";
-      else if (/^https?:/.test(nx)) caminho = nx;
-      else if (nx.startsWith("/")) caminho = nx;
-      else caminho = "/v2/transactions?accountId=" + encodeURIComponent(accountId) + "&dateFrom=" + desde + "&after=" + encodeURIComponent(nx);
-    }
-    return out;
-  } catch (e) {
-    if (e.status !== 404 && e.status !== 400) throw e;
-  }
-  // Versão antiga (por páginas), caso a nova não esteja disponível
-  for (let page = 1; page <= 20; page++) {
-    const r = await pluggy("GET", "/transactions?accountId=" + encodeURIComponent(accountId) + "&from=" + desde + "&pageSize=500&page=" + page);
+  const base = "/v2/transactions";
+  let caminho = base + "?accountId=" + encodeURIComponent(accountId) + "&dateFrom=" + desde;
+  const vistos = new Set();
+  for (let i = 0; i < 50 && caminho && !vistos.has(caminho); i++) {
+    vistos.add(caminho);
+    const r = await pluggy("GET", caminho);
     out.push(...(r.results || []));
-    if (!r.totalPages || page >= r.totalPages) break;
+    const nx = r.next;
+    if (!nx) caminho = "";
+    else if (/^https?:/.test(nx)) caminho = nx;
+    else if (nx.startsWith("/")) caminho = nx;
+    else if (nx.startsWith("?")) caminho = base + nx;
+    else caminho = base + "?accountId=" + encodeURIComponent(accountId) + "&dateFrom=" + desde + "&after=" + encodeURIComponent(nx);
   }
   return out;
 }
