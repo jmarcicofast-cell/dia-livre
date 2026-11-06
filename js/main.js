@@ -41,7 +41,7 @@ const DEF = () => ({
   v:1, inicio: todayKey(), recorde:0, dias:{}, vontades:[],
   motivos:["Quero dormir tranquila, sem medo de cobrança.","Meu dinheiro é para a minha família, não para juros.","Eu não preciso desse dinheiro. Eu preciso de calma.","Cada dia livre prova que eu consigo."],
   carta:"", barreiras:{}, contato:{nome:"",tel:""}, taxa:20, chat:[],
-  nome:"", objetivos:[], visual:VISUAL_PADRAO(), fin:FIN_DEF()
+  nome:"", objetivos:[], lemb:[], visual:VISUAL_PADRAO(), fin:FIN_DEF()
 });
 const uid = () => Math.random().toString(36).slice(2,9);
 const monthKey = () => todayKey().slice(0,7);
@@ -58,6 +58,7 @@ function merge(o){
   r.fin.banco = Object.assign(FIN_DEF().banco, (o&&o.fin&&o.fin.banco)||{});
   r.fin.rasc = Object.assign({entradas:[], aloc:{}, extras:[]}, (o&&o.fin&&o.fin.rasc)||{});
   r.visual = Object.assign(VISUAL_PADRAO(), (o&&o.visual)||{});
+  if(!Array.isArray(r.lemb)) r.lemb=[];
   r.contato = Object.assign({nome:"",tel:""}, r.contato||{});
   if(!(r.v>=2)){ // versão 2: dívidas guardam quanto falta pagar já com juros
     r.fin.dividas.forEach(dv=>{ if(dv.total==null){ dv.total = (dv.parc && dv.parc>=dv.saldo) ? dv.parc : Math.round(dv.saldo*(1+(dv.juros||0)/100)*100)/100; } });
@@ -206,7 +207,7 @@ async function connect(){
   });
 }
 function hideAI(){
-  ["#inc-btn","#pat-btn","#fin-btn"].forEach(s=>{ const el=$(s); if(el) el.hidden = true; });
+  ["#inc-btn","#pat-btn","#fin-btn","#lemb-ia-box"].forEach(s=>{ const el=$(s); if(el) el.hidden = true; });
   $("#c-note").textContent = "A conversa com a IA não está disponível neste aparelho. Use o CVV (188) ou sua pessoa de confiança.";
 }
 
@@ -216,8 +217,56 @@ function best(){ return Math.max(S.recorde||0, streak()); }
 function totalLivres(){ return Object.values(S.dias).filter(d=>d&&d.livre).length; }
 function resisted(){ return S.vontades.filter(v=>v.res); }
 
+/* ---------- Lembretes: a fazer e a comprar ---------- */
+/* S.lemb = [{id, t:"fazer"|"comprar", txt, d:"AAAA-MM-DD"|"", feito, ts}] */
+let lembTipo="fazer";
+function renderLemb(){
+  $$("#lemb-tipo button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.t===lembTipo)));
+  const hoje=todayKey(), meus=S.lemb.filter(l=>l.t===lembTipo)
+    .sort((a,b)=>(a.feito-b.feito) || (a.d||"9").localeCompare(b.d||"9") || a.ts-b.ts);
+  const box=$("#lemb-lista"); box.textContent="";
+  if(!meus.length) box.append(el("p","small muted", lembTipo==="fazer"?"Nada para fazer por aqui.":"A lista de compras está vazia."));
+  meus.forEach(l=>{
+    const r=el("label","check lemb"+(l.feito?" feito":""));
+    const ck=el("input"); ck.type="checkbox"; ck.checked=!!l.feito;
+    ck.onchange=()=>{ l.feito=ck.checked; save(); renderLemb(); };
+    const t=el("span","lt",l.txt);
+    if(l.d){ const at=!l.feito && l.d<hoje, hj=l.d===hoje;
+      t.append(el("small",at?"atr":hj?"hj":null, at?"atrasado · "+(l.d.slice(8)+"/"+l.d.slice(5,7)):hj?"hoje":l.d===addDia(hoje,1)?"amanhã":(l.d.slice(8)+"/"+l.d.slice(5,7))+" · "+SEMANA[parseKey(l.d).getDay()])); }
+    const x=el("button","x","✕"); x.setAttribute("aria-label","Apagar "+l.txt);
+    x.onclick=e=>{ e.preventDefault(); S.lemb=S.lemb.filter(z=>z.id!==l.id); save(); renderLemb(); };
+    r.append(ck,t,x); box.append(r);
+  });
+  const abertos=S.lemb.filter(l=>!l.feito), fz=abertos.filter(l=>l.t==="fazer").length, cp=abertos.filter(l=>l.t==="comprar").length;
+  $("#lemb-cont").textContent=[fz?fz+" a fazer":"", cp?cp+" para comprar":""].filter(Boolean).join(" · ");
+  $("#lemb-limpar").hidden=!meus.some(l=>l.feito);
+  $("#lemb-txt").placeholder = lembTipo==="fazer" ? "Ex.: pagar a escola" : "Ex.: arroz 5 kg";
+}
+function addDia(k,n){ const d=parseKey(k); d.setDate(d.getDate()+n); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+async function lembIA(){
+  const txt=$("#lemb-ia-txt").value.trim(); if(!txt){ toast("Escreva o que precisa lembrar."); return; }
+  if(!sample){ toast("A IA não está disponível neste aparelho."); return; }
+  const b=$("#lemb-ia-btn"); b.disabled=true; const rot=b.lastChild.textContent; b.lastChild.textContent="Organizando...";
+  try{
+    const hoje=todayKey();
+    const {text}=await sample("Hoje é "+hoje+" ("+SEMANA[parseKey(hoje).getDay()]+"). Transforme o texto abaixo em lembretes. Responda SÓ com um JSON, sem explicação, no formato "
+      +'[{"t":"fazer" ou "comprar","txt":"texto curto","d":"AAAA-MM-DD" ou ""}]'
+      +". Cada item de compra é um lembrete separado (inclua a quantidade no txt, se houver). Coisas a fazer com horário: coloque o horário no txt. Use datas reais a partir de hoje quando o texto disser amanhã, sexta, dia 15 etc.; se não houver data, deixe \"\".\n\nTexto:\n"+txt);
+    const m=text.match(/\[[\s\S]*\]/); const arr=m?JSON.parse(m[0]):[];
+    const novos=arr.filter(x=>x&&x.txt).map(x=>({id:uid(), t:x.t==="comprar"?"comprar":"fazer", txt:String(x.txt).trim().slice(0,140), d:/^\d{4}-\d{2}-\d{2}$/.test(x.d||"")?x.d:"", feito:false, ts:Date.now()}));
+    if(!novos.length){ toast("A IA não achou lembretes nesse texto."); return; }
+    S.lemb.push(...novos); $("#lemb-ia-txt").value="";
+    if(!novos.some(n=>n.t===lembTipo)) lembTipo=novos[0].t;
+    save(); renderLemb();
+    const f=novos.filter(n=>n.t==="fazer").length, c=novos.length-f;
+    toast("Adicionados: "+[f?f+" a fazer":"", c?c+" para comprar":""].filter(Boolean).join(" e ")+".");
+  }catch(e){ toast(e&&e.code==="rate_limited"?"A IA está ocupada. Tente de novo em instantes.":"Não deu para organizar com a IA agora."); }
+  finally{ b.disabled=false; b.lastChild.textContent=rot; }
+}
+
 /* ---------- Render: Hoje ---------- */
 function renderHoje(){
+  try{ renderLemb(); }catch(e){}
   const n = streak(); const b = best();
   if(b > (S.recorde||0)){ S.recorde = b; save(); }
   $("#s-num").textContent = n;
@@ -1643,6 +1692,13 @@ $("#fc-add").onclick=()=>{ const nome=$("#fc-nome").value.trim(), valor=num($("#
   S.fin.contas.push({id:uid(),nome,valor,dia,cat:$("#fc-cat").value||"contas"}); $("#fc-nome").value=$("#fc-valor").value=$("#fc-dia").value=""; save(); renderDinheiro(); toast("Conta adicionada."); };
 $("#fc-auto").onchange=e=>{ S.fin.auto=e.target.checked; save(); };
 $("#ra-auto").onclick=distribuirRasc;
+$$("#lemb-tipo button").forEach(b=>b.onclick=()=>{ lembTipo=b.dataset.t; renderLemb(); });
+const lembAdd=()=>{ const txt=$("#lemb-txt").value.trim(); if(!txt){ toast("Escreva o lembrete."); return; }
+  S.lemb.push({id:uid(), t:lembTipo, txt, d:$("#lemb-data").value||"", feito:false, ts:Date.now()}); $("#lemb-txt").value=$("#lemb-data").value=""; save(); renderLemb(); $("#lemb-txt").focus(); };
+$("#lemb-add").onclick=lembAdd;
+$("#lemb-txt").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); lembAdd(); } });
+$("#lemb-limpar").onclick=()=>{ S.lemb=S.lemb.filter(l=>!(l.t===lembTipo && l.feito)); save(); renderLemb(); };
+$("#lemb-ia-btn").onclick=lembIA;
 $$("#ra-p-tipo button").forEach(b=>b.onclick=()=>{ raPTipo=b.dataset.t; renderPuxar(); });
 $("#ra-p-item").onchange=preencherPuxar;
 $("#ra-p-add").onclick=addPuxar;

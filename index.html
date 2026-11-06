@@ -52,6 +52,29 @@
 
     <div class="card" id="checkin"></div>
 
+    <div class="card" id="lemb-card">
+      <div class="between"><h2>Lembretes</h2><span class="small muted" id="lemb-cont"></span></div>
+      <div class="seg" id="lemb-tipo" aria-label="Lista">
+        <button data-t="fazer" aria-pressed="true">A fazer</button>
+        <button data-t="comprar" aria-pressed="false">Comprar</button>
+      </div>
+      <div id="lemb-lista"></div>
+      <button class="btn-link" id="lemb-limpar" hidden>Apagar os já feitos</button>
+      <div class="stack sep">
+        <input id="lemb-txt" placeholder="Ex.: pagar a escola" aria-label="Novo lembrete">
+        <div class="row" style="flex-wrap:nowrap">
+          <input id="lemb-data" type="date" aria-label="Data (opcional)" style="flex:1;min-width:0">
+          <button class="btn-soft" id="lemb-add" style="flex:1">Adicionar</button>
+        </div>
+      </div>
+      <details class="sep" id="lemb-ia-box">
+        <summary class="small"><i data-ic="ia"></i> Preencher com a IA</summary>
+        <p class="muted small">Escreva do seu jeito ou cole uma lista. A IA separa o que é para fazer e o que é para comprar, e põe as datas.</p>
+        <textarea id="lemb-ia-txt" placeholder="Ex.: amanhã levar o carro na oficina, sexta reunião às 10h, comprar arroz, 2 caixas de leite e sabão em pó"></textarea>
+        <button class="btn-soft" id="lemb-ia-btn"><i data-ic="ia"></i>Organizar com a IA</button>
+      </details>
+    </div>
+
     <div class="card">
       <h2>Últimas 5 semanas</h2>
       <p class="muted small">Esqueceu de marcar algum dia? Toque nele no calendário.</p>
@@ -535,7 +558,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=29"></script>
+<script type="module" src="js/main.js?v=30"></script>
 
 </body>
 </html>
